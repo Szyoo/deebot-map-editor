@@ -19,7 +19,12 @@ The user interface is currently in Chinese only.
   - split overlapping corners, merge collinear points automatically;
   - split and merge rooms, rename rooms and change room type;
   - history, checkpoints, consistency checks between neighbouring rooms;
-  - show the length (mm) of every wall segment and every corner angle on the map, each with its own toggle.
+  - show the length (mm) of every wall segment and every corner angle on the map, each with its own toggle:
+    - walls shared by several rooms are drawn and labelled once; if the two sides disagree on the wall type the line is drawn in two colours;
+    - right angles get a small square mark, only other angles get a number;
+    - corners shared by several rooms are drawn filled; hover to see which rooms;
+    - with a room selected, the full length of each of its walls is shown, with ticks where neighbouring rooms split that wall;
+  - with a room selected, dragging its walls and corners changes only that room by default (a switch turns linking on; hold ⌥ to invert temporarily).
 - **Background image**: put a floor plan (or any image) under the map and adjust walls against it:
   - opacity, rotation, scale, position, horizontal/vertical mirroring;
   - "two-point align": click two reference points on the image, then the matching points on the map — scale, angle and position are solved in one step;
