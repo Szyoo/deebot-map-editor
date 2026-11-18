@@ -224,6 +224,13 @@ def make_handler(app: App):
             n = int(self.headers.get("Content-Length") or 0)
             return json.loads(self.rfile.read(n) or b"{}")
 
+        def _host_ok(self) -> bool:
+            # 只接受本机地址访问，防止 DNS 重绑定：恶意域名解析到 127.0.0.1 时，
+            # 它的 Origin 和 Host 一致，光比对两者拦不住
+            bind, port = self.server.server_address[:2]
+            allowed = {"127.0.0.1", "localhost", "[::1]", str(bind)}
+            return self.headers.get("Host", "").lower() in {f"{h}:{port}" for h in allowed}
+
         def _same_origin(self) -> bool:
             # 只接受本页发起的写请求，防止别的网页跨站调用本地接口
             origin = self.headers.get("Origin")
@@ -231,6 +238,8 @@ def make_handler(app: App):
             return origin is None or origin.split("://", 1)[-1] == host
 
         def do_GET(self):
+            if not self._host_ok():
+                return self._send(403, {"error": "只接受本机地址访问"})
             if self.path in ("/", "/index.html"):
                 return self._send(200, render_editor(app), "text/html; charset=utf-8")
             if self.path == "/api/status":
@@ -238,6 +247,8 @@ def make_handler(app: App):
             return self._send(404, {"error": "not found"})
 
         def do_POST(self):
+            if not self._host_ok():
+                return self._send(403, {"error": "只接受本机地址访问"})
             if not self._same_origin():
                 return self._send(403, {"error": "跨站请求被拒绝"})
             try:

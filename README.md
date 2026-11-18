@@ -27,7 +27,7 @@
 需要 Python 3.13 及以上。
 
 ```bash
-git clone <本仓库地址> deebot-map-editor
+git clone https://github.com/Szyoo/deebot-map-editor.git
 cd deebot-map-editor
 python3 -m venv .venv
 .venv/bin/pip install -e .
@@ -108,7 +108,7 @@ deebot-map upload examples/demo-design.json --demo --yes
 - 坐标单位是 mm，y 轴向上为负。
 - 墙点里的 `T` 表示「以这个点结尾的那段墙」的类型：`1` 外墙，`2` 内墙，其它值（如 `3-1-0`）是门类段。
 - `info` / `subsets` 字段是 base64 编码的 zstd 或 LZMA 压缩 JSON。
-- 组 1 的序号按房间列表的顺序对应 mssid。mssid 不连续时（比如 0–8、10、11、14）必须换算，本工具在读取和写入时都会自动处理。
+- 组 1 的序号按房间列表的顺序对应 mssid。mssid 不连续时（比如 0、1、2、4、5，演示地图就是这样）必须换算，本工具在读取和写入时都会自动处理。
 
 ### 上传顺序
 
