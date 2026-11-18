@@ -1,0 +1,1622 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>扫地机地图编辑器</title>
+<style>
+:root{--bg:#f6f6f4;--panel:#fff;--fg:#222;--muted:#777;--line:#ddd;--grid:#e6e6e2;--accent:#1c7ed6;--warn:#e03131;--ok:#2b8a3e;--amber:#e67700;
+  --g1:#d9480f;--g2:#1971c2;--g6:#2b8a3e;--g7:#e8590c;--vw:#c2255c;--mw:#9c36b5;--ct:#f08c00;--ds:#0c8599;--na:#5f3dc4;--fu:#a61e4d;--pt:#2f9e44;--r2:#000}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#18181a;--panel:#232326;--fg:#eee;--muted:#999;--line:#3a3a3e;--grid:#2a2a2e;--accent:#4dabf7;--warn:#ff6b6b;--ok:#69db7c;--amber:#ffa94d;
+  --g1:#ff8a4c;--g2:#4dabf7;--g6:#69db7c;--g7:#ffa94d;--vw:#f06595;--mw:#da77f2;--ct:#ffc078;--ds:#66d9e8;--na:#9775fa;--fu:#f783ac;--pt:#8ce99a;--r2:#ddd}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.45 -apple-system,"PingFang SC",sans-serif;display:flex;height:100vh;overflow:hidden}
+aside{width:310px;flex:none;background:var(--panel);overflow:auto;padding:12px 14px}
+#left{border-right:1px solid var(--line)}
+#right{border-left:1px solid var(--line);width:340px}
+h1{font-size:15px;margin:0 0 2px}
+h2{font-size:12px;color:var(--muted);font-weight:600;margin:16px 0 6px;letter-spacing:.04em}
+.sub{color:var(--muted);font-size:12px}
+label{display:flex;align-items:center;gap:6px;padding:2px 0;cursor:pointer}
+.sw{width:14px;height:4px;border-radius:2px;flex:none}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+button,select,input[type=text],input[type=number]{font:inherit;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:6px;padding:3px 8px}
+button{cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger{color:var(--warn)}
+button:disabled{opacity:.4;cursor:default}
+.tools{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.tools button{text-align:left;padding:4px 8px}
+.desc{color:var(--muted);font-size:11.5px;margin:-1px 0 4px 20px}
+.tag{display:inline-block;font-size:11px;border-radius:4px;padding:0 5px;border:1px solid currentColor;white-space:nowrap}
+.t-ok{color:var(--ok)}.t-static{color:var(--amber)}.t-no{color:var(--warn)}.t-ro{color:var(--muted)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td{border-top:1px solid var(--line);padding:4px 3px;vertical-align:top;overflow-wrap:anywhere}
+table{table-layout:fixed}td:first-child{width:42%}
+main{flex:1;position:relative;min-width:0}
+svg{width:100%;height:100%;display:block;user-select:none;touch-action:none}
+#hud{position:absolute;left:10px;bottom:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:12px ui-monospace,Menlo,monospace;pointer-events:none;white-space:pre}
+#hint{position:absolute;left:10px;top:10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:60%;pointer-events:none}
+#tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12px;display:none;white-space:pre}
+.card{border:1px solid var(--line);border-radius:8px;padding:8px;margin:6px 0}
+.op{border-left:3px solid var(--line);padding:3px 6px;margin:4px 0;font-size:12px}
+.op.w{border-color:var(--warn)}.op.s{border-color:var(--amber)}.op.k{border-color:var(--ok)}
+.op code{font-size:11px;word-break:break-all;color:var(--muted)}
+.warn{color:var(--warn);font-size:12px;margin:2px 0}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:9}
+#plan .st{font-size:12px;margin:3px 0;padding:4px 6px;border-left:3px solid var(--line);border-radius:4px}
+#plan .st.prov{opacity:.7}#plan .st.warn{border-color:var(--amber)}
+#joblog{font:11px ui-monospace,Menlo,monospace;white-space:pre-wrap;max-height:240px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px;margin-top:6px}
+#dlg .box{background:var(--panel);border-radius:10px;padding:14px;width:min(900px,92vw);max-height:86vh;display:flex;flex-direction:column;gap:8px}
+#dlg textarea{flex:1;min-height:50vh;font:12px ui-monospace,Menlo,monospace;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px}
+.hrow{display:flex;justify-content:space-between;gap:6px;align-items:center;padding:3px 6px;border-radius:6px;cursor:pointer;font-size:12px}
+.hrow:hover{background:var(--bg)}
+.hrow.cur{background:var(--accent);color:#fff}.hrow.cur .sub{color:#fff}
+.hrow.fut{opacity:.45}
+#hist{max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:3px}
+.wtab td{cursor:pointer}.wtab tr.on td{background:var(--bg);font-weight:600}
+.lnk{color:var(--accent);cursor:pointer;text-decoration:underline dotted}
+.legend{display:grid;gap:3px;font-size:12px}.legend div{display:flex;align-items:center;gap:8px}
+.lg{display:inline-block;width:26px;flex:none}
+.grid2{display:grid;grid-template-columns:70px 1fr;gap:4px 6px;align-items:center}
+@media (max-width:900px){body{flex-direction:column;overflow:auto;height:auto}aside,#right{width:100%;border:0}main{height:70vh}}
+</style>
+</head>
+<body>
+<aside id="left">
+  <h1 id="title">地图</h1>
+  <div class="sub" id="meta"></div>
+
+  <h2>新建</h2>
+  <div class="desc" style="margin:0 0 6px">平时不用选工具：点哪个选哪个，拖哪个动哪个。只有要新画东西时才点下面的按钮。</div>
+  <div class="tools" id="tools"></div>
+  <label style="margin-top:6px"><input type="checkbox" id="snap" checked>吸附到 25 mm 网格</label>
+  <label><input type="checkbox" id="link" checked>拖墙时联动相邻房间的重合点（按住 ⌥ 拖动可临时不联动）</label>
+  <label><input type="checkbox" id="focus" checked>选中房间时聚焦（其他房间变暗、点不到）</label>
+
+  <h2>历史（点任意一步跳过去）</h2>
+  <div class="row" style="margin-bottom:4px">
+    <button id="undo">← 后退</button><button id="redo">前进 →</button>
+    <button id="reset" class="danger">恢复原始地图</button>
+  </div>
+  <div id="hist"></div>
+  <div class="desc" style="margin:4px 0 0">⌘Z 后退，⇧⌘Z 前进。后退后再改，前进的那几步会被丢掉。</div>
+
+  <h2>存档点</h2>
+  <div class="row" style="margin-bottom:4px">
+    <button id="saveCp">保存存档点</button>
+    <button id="expCp">导出存档文件</button>
+    <button id="impCp">导入</button><input type="file" id="impFile" accept=".json" hidden>
+  </div>
+  <div id="saves"></div>
+  <div class="desc" style="margin:4px 0 0">存档点存在这个浏览器里。清浏览器数据会丢，重要的请导出成文件。</div>
+
+  <h2>图例</h2>
+  <div class="legend">
+    <div><span class="lg" style="border-top:3px solid var(--g1)"></span>外墙</div>
+    <div><span class="lg" style="border-top:3px solid #868e96"></span>内墙（房间之间）</div>
+    <div><span class="lg" style="border-top:3px dashed var(--ds)"></span>门段（房间之间连通的口子）</div>
+    <div><span class="lg" style="border-top:2px dashed var(--muted)"></span>修改前的墙（对比用）</div>
+    <div><span class="lg" style="border-top:2px solid var(--g6)"></span>激光清扫边界（只读）</div>
+    <div><span class="lg" style="border-top:2px dashed var(--g2)"></span>App 美化轮廓（只读）</div>
+    <div><span class="lg" style="border-top:2px dotted var(--g7)"></span>建图原始轮廓（只读）</div>
+    <div><span class="lg" style="border-top:3px dashed var(--accent)"></span>待提交的分割线</div>
+    <div><span class="lg" style="width:10px;height:10px;border-radius:50%;border:1.5px solid var(--fg)"></span>角点（可拖）</div>
+    <div><span class="lg" style="width:10px;height:10px;border-radius:50%;border:2px solid var(--warn)"></span>0 长度的墙</div>
+  </div>
+
+  <h2>图层</h2>
+  <div id="layers"></div>
+
+  <h2>视图</h2>
+  <div class="row"><button id="fit">适配全图</button><button id="flipView">上下翻转</button></div>
+  <div class="desc" style="margin:6px 0 0">滚轮缩放；按住空白处或房间拖动平移（画图时按住空格或中键平移）。Esc 取消，Delete 删除选中的东西，双击墙加角点。</div>
+</aside>
+
+<main>
+  <svg id="svg"></svg>
+  <div id="hint"></div>
+  <div id="hud"></div>
+  <div id="tip"></div>
+</main>
+
+<aside id="right">
+  <h2>选中对象</h2>
+  <div id="inspector" class="sub">点地图上的对象查看和修改</div>
+
+  <h2>待提交改动 <span id="opCount"></span></h2>
+  <div id="warns"></div>
+  <div id="ops" class="sub">还没有改动</div>
+  <h2>上传到机器人</h2>
+  <div id="appState" class="sub"></div>
+  <div class="row" style="margin-top:6px;flex-wrap:wrap">
+    <button id="dryrun">预演上传（dry-run）</button>
+    <button id="export">导出设计文件</button>
+    <button id="refresh">从机器人重新读取</button>
+  </div>
+  <div class="grid2" style="margin-top:6px">
+    <span class="sub">每步最大移动</span><span><input id="maxMove" type="number" min="25" step="25" value="300" style="width:80px"> mm</span>
+    <span class="sub">未实测命令</span><label style="margin:0"><input type="checkbox" id="untested">一起发送（默认不发）</label>
+  </div>
+  <div id="job" style="margin-top:6px"></div>
+  <div class="desc" style="margin:6px 0 0">上传顺序：备份 → 切割/合并 → 改名 → 逐间分步写墙，每步回读核对。开始前确认机器人在基站上充电。</div>
+
+  <h2>每一层能不能改</h2>
+  <div id="matrix"></div>
+</aside>
+
+<div id="dlg"><div class="box">
+  <div class="row" style="justify-content:space-between"><b id="dlgTitle">预演结果</b><span class="row"><button id="copy">复制</button><button id="dl">下载设计文件</button><button id="startUp" class="danger">开始上传</button><button id="close">关闭</button></span></div>
+  <div id="plan" style="overflow:auto;flex:1;min-height:30vh"></div>
+  <textarea id="out" readonly style="display:none"></textarea>
+</div></div>
+
+<script>
+const D = /*__DATA__*/null;
+const APP = /*__APP__*/null;
+if (!D) {
+  document.body.innerHTML = `<div style="margin:40px auto;max-width:520px;font-size:14px;line-height:1.8">
+    <h1 style="font-size:20px">还没有地图</h1>
+    <p>${APP && APP.credentials ? "点下面的按钮从机器人读取地图（只读，大约 20 秒）。" : "没有找到凭据：请设置 ECOVACS_USERNAME / ECOVACS_PASSWORD / ECOVACS_COUNTRY 环境变量，或用 --env-file 指定凭据文件后重新启动。也可以用 <code>deebot-map serve --demo</code> 先试用演示地图。"}</p>
+    <button id="first" ${APP && APP.credentials ? "" : "disabled"}>从机器人读取地图</button> <span id="firstMsg"></span></div>`;
+  const b = document.getElementById("first");
+  b.onclick = async () => { b.disabled = true; document.getElementById("firstMsg").textContent = "读取中…";
+    const r = await fetch("/api/refresh", {method:"POST", headers:{"Content-Type":"application/json"}, body:"{}"});
+    if (r.ok) location.reload(); else { b.disabled = false; document.getElementById("firstMsg").textContent = (await r.json()).error; } };
+  throw new Error("no map");
+}
+const NS = "http://www.w3.org/2000/svg";
+const $ = s => document.querySelector(s);
+const el = (t, a = {}, p) => { const e = document.createElementNS(NS, t); for (const k in a) if (a[k] !== undefined) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const MID = String(D.meta.mid);
+
+// ======================================================================
+// 能改性矩阵（来源：findings/map-editing.md 第 2、7 节）
+// ======================================================================
+const MATRIX = [
+  ["组1 墙（外墙/内墙/门段）", "ok", "setMapInfo_V2（一维 info，逐间写）", "已实测：往外推、往里推、斜角、改类型、开门、挪内墙都当场生效，不用重启。固件不强制 App 的拖墙规则。一次改动太大会掉线并丢弃写入，所以上传时逐间、分小步写，每步回读"],
+  ["增减角点", "ok", "同上", "已实测（整图按设计重画成功）。上传时先插点、再移动、最后删点，每步几何变化都很小"],
+  ["房间名 / 类型", "ok", "setMapSet_V2 ar rename", "已实测 code 0。切割/合并会清空名字，上传时放在拓扑操作之后"],
+  ["地板材质", "static", "setMapSet_V2 ar mod material", "格式来自 H5，未实测"],
+  ["重污区 / 清扫顺序", "static", "setMapSet_V2 ar mod dirty / index", "全量写：没选中的房间也要补 0。未实测"],
+  ["分割房间", "ok", "setMapSet_V2 ar divide", "已实测。两端必须落在该房间组 6（清扫边界）上，容差约 10 cm；切线和组 6 的边重合会失败（20004）；坐标 y 不取反。切完固件重新生成全图组 1"],
+  ["合并房间", "ok", "setMapSet_V2 ar merge", "已实测，可一次合并多个；保留最小 mssid，名字清空，全图组 1 重新生成"],
+  ["虚拟墙 vw / 禁拖区 mw", "static", "setMapSet_V2 vw/mw add·mod·del", "未实测"],
+  ["地毯 ct / 整屋地毯 fc", "static", "setMapSet_V2 ct/fc", "未实测；家具接口里的 2 块地毯和 ct 是同一份数据"],
+  ["门槛条 ds", "static", "setMapSet_V2 ds（带 angle、subtype）", "未实测"],
+  ["窄区 na", "static", "setMapSet_V2 na", "未实测"],
+  ["家具", "static", "setFurnitureInfo_V2", "未实测；本机只有 2 块 AI 识别的地毯"],
+  ["巡逻点", "static", "setMapPoint", "未实测；上限 50 个"],
+  ["宠物区 pc / 玻璃门 gd / 喷水禁区 sw", "no", "—", "H5 有，本机固件读就报 20003，大概率写也不认"],
+  ["组6 清扫边界", "ro", "无", "设备由激光数据生成，没有写命令"],
+  ["组2 美化轮廓", "ro", "无", "设备生成的显示层，没有写命令"],
+  ["组7 原始房间轮廓", "ro", "无", "建图原始数据，写墙不会改它；切割后随之更新"],
+  ["组5", "ro", "无", "房间标量，含义不明，无写命令"],
+  ["栅格 ol", "ro", "无", "建图残片，没有写栅格的命令"],
+  ["充电桩 / 机器人位置", "ro", "无", "只有 getPos_V2"],
+  ["房间清扫参数 cleanset", "ro", "无（地图编辑）", "清扫时由 clean_V2 指定，不是地图数据"],
+  ["AI 识别物体（污渍等）", "ro", "无", "只显示"],
+  ["地图级：备份/改名/旋转/切换", "ok", "setCachedMapInfo", "备份已实测；不在本页操作"],
+];
+const TAG = {ok:["已实测可改","t-ok"], static:["可改·未实测","t-static"], no:["本机不支持","t-no"], ro:["只读","t-ro"]};
+$("#matrix").innerHTML = `<table>${MATRIX.map(([n, s, c, d]) => `<tr><td><b>${n}</b><br><span class="tag ${TAG[s][1]}">${TAG[s][0]}</span></td><td>${esc(c)}<div class="sub">${esc(d)}</div></td></tr>`).join("")}</table>`;
+
+// ======================================================================
+// 数据与状态
+// ======================================================================
+const grp = id => D.groups.find(x => x.id === id);
+const SUBTYPES = ["默认","客厅","餐厅","卧室","书房","厨房","卫浴间","洗衣房","休息室","储藏室","儿童房","阳光房","走廊","阳台","健身房","衣帽间","榻榻米"];
+const MATERIALS = ["默认","瓷砖","木地板","大理石","榻榻米"];
+const DS_SUB = {"0":"AI 识别", "1":"用户"};
+
+function initialModel() {
+  const g1 = grp("1");
+  return {
+    walls: clone(g1 ? g1.rooms : {}),
+    roomOrder: g1 ? Object.keys(g1.rooms) : [],
+    rooms: Object.fromEntries(D.rooms.map(r => {
+      const raw = r.raw || [];
+      return [r.mssid, {name:r.name, subtype:String(r.icon ?? raw[2] ?? "0"), material:String(raw[9] ?? r.floor_type ?? "0"),
+        dirty:+(raw[10] ?? 0), seq:+(raw[4] ?? 0), cx:r.center_x_mm, cy:r.center_y_mm, neighbors:r.neighbors}];
+    })),
+    vw: D.vw.map(v => ({mssid:v.mssid, pts:clone(v.points_mm), isCustom:String(v.raw[1] ?? "1")})),
+    mw: (D.mw || []).map(v => ({mssid:v.mssid, pts:clone(v.points_mm), isCustom:String(v.raw[1] ?? "1")})),
+    ct: D.ct.map(v => ({mssid:v.mssid, pts:clone(v.points), subtype:String(v.raw[1]), isCustom:String(v.raw[2])})),
+    ds: D.ds.map(v => ({mssid:v.mssid, pts:clone(v.points), subtype:String(v.raw[1]), isCustom:String(v.raw[2]), angle:+v.raw[3]})),
+    na: D.na.map(v => ({mssid:v.mssid, pts:clone(v.points)})),
+    furniture: D.furniture.map(f => ({mssid:String(f.fid), type:f.type, pts:clone(f.points)})),
+    patrol: D.patrol.map(p => ({mssid:String(p.pid), pts:[[p.x, p.y]]})),
+    actions: [],   // 分割 / 合并：不是状态差异，单独记录
+  };
+}
+const ORIG = initialModel();
+let M = clone(ORIG);
+let newId = 1;
+// 历史：每一步改完后记一个快照；后退/前进就是在快照之间移动指针
+let hist = [{label:"打开（读取到的地图）", t:Date.now(), s:JSON.stringify(M)}], hi = 0;
+try {
+  const saved = JSON.parse(localStorage.getItem("mapeditor-draft") || "null");
+  if (saved && saved.mid === MID && saved.sig === D.base.signature && saved.hist && saved.hist.length) {
+    hist = saved.hist; hi = Math.min(saved.hi ?? hist.length - 1, hist.length - 1);
+    M = JSON.parse(hist[hi].s); newId = saved.newId || 1;
+  }
+} catch (e) {}
+function persist() {
+  const keep = 60, start = Math.max(0, hist.length - keep);
+  try { localStorage.setItem("mapeditor-draft", JSON.stringify({mid:MID, sig:D.base.signature, hist:hist.slice(start), hi:hi - start, newId})); } catch (e) {}
+}
+function changed(label) {
+  if (label) {
+    const snap = JSON.stringify(M);
+    if (snap !== hist[hi].s) {
+      hist = hist.slice(0, hi + 1); hist.push({label, t:Date.now(), s:snap}); hi++;
+      if (hist.length > 300) { hist.shift(); hi--; }
+    }
+  }
+  persist(); render(); renderOps(); renderInspector(); renderHistory();
+}
+function jump(i) { if (i < 0 || i >= hist.length || i === hi) return; hi = i; M = JSON.parse(hist[hi].s); sel = null; changed(); }
+const undo = () => jump(hi - 1), redo = () => jump(hi + 1);
+const fmtT = t => new Date(t).toLocaleTimeString("zh-CN", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+function renderHistory() {
+  $("#undo").disabled = hi <= 0; $("#redo").disabled = hi >= hist.length - 1;
+  const rows = hist.map((h, i) => ({h, i})).reverse().slice(0, 40);
+  $("#hist").innerHTML = rows.map(({h, i}) => `<div class="hrow ${i === hi ? "cur" : ""} ${i > hi ? "fut" : ""}" data-h="${i}"><span>${esc(h.label)}</span><span class="sub">${fmtT(h.t)}</span></div>`).join("");
+  document.querySelectorAll("[data-h]").forEach(r => r.onclick = () => jump(+r.dataset.h));
+}
+
+// 存档点：起名保存当前状态，可随时载入；也能导出成文件
+const SAVE_KEY = "mapeditor-saves-" + MID;
+const loadSaves = () => { try { return JSON.parse(localStorage.getItem(SAVE_KEY) || "[]"); } catch (e) { return []; } };
+const storeSaves = a => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(a)); return true; } catch (e) { alert("浏览器存储写不进去，请用「导出存档文件」保存"); return false; } };
+function renderSaves() {
+  const a = loadSaves();
+  $("#saves").innerHTML = a.length ? a.map((x, i) => `<div class="hrow"><span><b>${esc(x.name)}</b><br><span class="sub">${new Date(x.t).toLocaleString("zh-CN")}</span></span>
+    <span class="row"><button data-load="${i}">载入</button><button class="danger" data-del="${i}">删</button></span></div>`).join("") : '<span class="sub">还没有存档点</span>';
+  document.querySelectorAll("[data-load]").forEach(b => b.onclick = () => {
+    const x = loadSaves()[+b.dataset.load]; if (!x) return;
+    M = JSON.parse(x.s); sel = null; changed(`载入存档「${x.name}」`);
+  });
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+    const a = loadSaves(), x = a[+b.dataset.del];
+    if (x && confirm(`删除存档点「${x.name}」？`)) { a.splice(+b.dataset.del, 1); storeSaves(a); renderSaves(); }
+  });
+}
+
+// ======================================================================
+// 图层
+// ======================================================================
+const LAYERS = [
+  {key:"grid", name:"网格 1 m", color:"var(--line)", on:true},
+  {key:"raster", name:"栅格残片 ol", color:"#868e96", on:false, ro:true},
+  {key:"g6", name:"组6 清扫边界", color:"var(--g6)", on:true, ro:true},
+  {key:"g2", name:"组2 美化轮廓", color:"var(--g2)", on:false, ro:true},
+  {key:"g7", name:"组7 原始轮廓", color:"var(--g7)", on:false, ro:true},
+  {key:"orig", name:"组1 修改前（对比）", color:"var(--muted)", on:true, ro:true},
+  {key:"g1", name:"组1 房间墙（可改）", color:"var(--g1)", on:true},
+  {key:"fill", name:"房间填充", color:"#adb5bd", on:true},
+  {key:"vw", name:"虚拟墙", color:"var(--vw)", on:true},
+  {key:"mw", name:"禁拖区", color:"var(--mw)", on:true},
+  {key:"ct", name:"地毯", color:"var(--ct)", on:true},
+  {key:"ds", name:"门槛条", color:"var(--ds)", on:true},
+  {key:"na", name:"窄区", color:"var(--na)", on:true},
+  {key:"furniture", name:"家具", color:"var(--fu)", on:false},
+  {key:"patrol", name:"巡逻点", color:"var(--pt)", on:false},
+  {key:"pos", name:"充电桩", color:"var(--r2)", on:true, ro:true},
+  {key:"labels", name:"房间名", color:"var(--r2)", on:true},
+  {key:"angles", name:"墙角角度", color:"var(--accent)", on:true},
+];
+const LS = {};
+LAYERS.forEach(l => LS[l.key] = l.on);
+try { Object.assign(LS, JSON.parse(localStorage.getItem("mapeditor-layers") || "{}")); } catch (e) {}
+LAYERS.forEach(l => {
+  const lab = document.createElement("label");
+  lab.innerHTML = `<input type="checkbox" ${LS[l.key] ? "checked" : ""}><span class="sw" style="background:${l.color}"></span>${l.name}${l.ro ? ' <span class="tag t-ro">只读</span>' : ""}`;
+  lab.querySelector("input").onchange = e => { LS[l.key] = e.target.checked; try { localStorage.setItem("mapeditor-layers", JSON.stringify(LS)); } catch (_) {} render(); };
+  $("#layers").appendChild(lab);
+});
+
+// ======================================================================
+// 模式：默认就是「编辑」——点哪个选哪个、拖哪个动哪个；新建东西时才切到绘制模式
+// ======================================================================
+const TOOLS = [
+  {k:"edit", n:"编辑（默认）", h:"点任何东西看详情；按住拖动：角点自由移动、墙沿垂直方向平移、虚拟墙等整体移动。双击墙加一个角点。拖到别的角点上会自动吸附，拖成 0 长度或一条直线会自动合并"},
+  {k:"newwall", n:"画新墙", h:"从一个房间的墙上拖到同一个房间墙上的另一点：画在房间里面 = 切掉一角；画在外面 = 往外扩出一块。两端会自动吸附到墙上"},
+  {k:"cut", n:"切割房间", h:"从房间一边的墙拖到对面的墙：房间沿这条线切成两间，新的一间叫「新房间」，切口两边自动是内墙。两端会吸附到墙上"},
+  {k:"merge", n:"合并房间", h:"依次点要合并的相邻房间，再点右侧「确认合并」"},
+  {k:"vw", n:"画虚拟墙", h:"拖动画一条线段"},
+  {k:"mw", n:"画禁拖区", h:"拖动画矩形"},
+  {k:"ct", n:"画地毯", h:"拖动画矩形"},
+  {k:"ds", n:"画门槛条", h:"拖动画矩形"},
+  {k:"na", n:"画窄区", h:"拖动画矩形"},
+  {k:"patrol", n:"加巡逻点", h:"点一下放一个巡逻点"},
+];
+let tool = "edit";
+TOOLS.forEach(t => {
+  const b = document.createElement("button");
+  b.textContent = t.n; b.dataset.k = t.k;
+  b.onclick = () => setTool(tool === t.k && t.k !== "edit" ? "edit" : t.k);
+  $("#tools").appendChild(b);
+});
+let mergeSel = [];
+function setTool(k) {
+  tool = k; if (k !== "merge") mergeSel = [];
+  preview = null;
+  document.querySelectorAll("#tools button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+  $("#hint").textContent = TOOLS.find(t => t.k === k).h + (k === "edit" ? "" : "　（Esc 或再点一次按钮退出）");
+  render(); renderInspector();
+}
+
+// ======================================================================
+// 几何
+// ======================================================================
+const snapOn = () => $("#snap").checked;
+const snap = v => snapOn() ? Math.round(v / 25) * 25 : Math.round(v);
+function pip(pt, poly) {
+  let [x, y] = pt, inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function distSeg(p, a, b) {
+  const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy;
+  let t = L ? ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+}
+function segX(a, b, c, d) {
+  const o = (p, q, r) => Math.sign((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]));
+  return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+}
+const near = (p, poly, tol) => pip(p, poly) || poly.some((q, i) => distSeg(p, q, poly[(i + 1) % poly.length]) <= tol);
+const ptsOf = room => room.map(p => [p[0], p[1]]);
+const rectFrom = (a, b) => [[a[0], a[1]], [b[0], a[1]], [b[0], b[1]], [a[0], b[1]]];
+
+// 组1 每段：第 i 点的 T 描述从第 i-1 点到第 i 点的墙（H5 按墙的 B 端点写 T）
+const segEditable = T => T === "1" || T === "2";
+const WTYPES = {
+  "1":     {name:"外墙", short:"外墙", desc:"房子外轮廓上的墙。App 里唯一能拖的墙：只能从建图时的初始位置（组7）往外推，最多 3 m；墙长不少于 0.5 m；不能推进别的房间、不能撞到其它墙。初始位置靠全屋统一编号 W0、W1… 和组7 一一对应。"},
+  "2":     {name:"内墙", short:"内墙", desc:"房间之间的隔墙，由分割/合并生成。App 里点它会提示「内墙无法编辑」；想改位置，App 的做法是重新分割/合并（会重新生成外墙）。直接改坐标协议上能发，设备端后果未验证。"},
+  "3-1-0": {name:"门段", short:"门", desc:"门洞/通道，连着两个房间，机器人从这里在房间之间穿行。你家 21 段，长 0.6–2.15 m。由机器人分房间时生成，App 不解析、原样写回、不能拖。3-1-0 三个数各代表什么没查到。"},
+  "0":     {name:"门段 0（不建议）", short:"门?", desc:"App 源码把 1、2 以外的值都当门段处理，但你的地图里从没出现过 0，机器人认不认未知。需要门洞请用 3-1-0。"},
+};
+// 房间多边形方向（>0 逆时针）与每个角的内角（度）
+function signedArea(pts) { let a = 0; pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; }); return a / 2; }
+function cornerAngles(pts) {
+  const sgn = Math.sign(signedArea(pts)) || 1;
+  return pts.map((p, i) => {
+    const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length];
+    const v1 = [p[0] - a[0], p[1] - a[1]], v2 = [b[0] - p[0], b[1] - p[1]];
+    if (!Math.hypot(...v1) || !Math.hypot(...v2)) return null;          // 有 0 长度墙，角度无意义
+    const turn = Math.atan2(v1[0] * v2[1] - v1[1] * v2[0], v1[0] * v2[0] + v1[1] * v2[1]) * 180 / Math.PI;
+    return 180 - sgn * turn;
+  });
+}
+// 第 i 段墙的方向角（0° 朝 +x，逆时针为正）
+const segDir = (A, B) => ((Math.atan2(B[1] - A[1], B[0] - A[0]) * 180 / Math.PI) + 360) % 360;
+// 某点附近的全部墙段（含所有房间）
+function wallsNear(pt, tol) {
+  const out = [];
+  for (const r of M.roomOrder) (M.walls[r] || []).forEach((p, i, arr) => {
+    const a = arr[(i - 1 + arr.length) % arr.length];
+    if (distSeg(pt, a, p) <= tol) out.push(`${r}:${i}`);
+  });
+  return out;
+}
+// 同一房间内共线且有重叠的墙段（多半是改出来的）
+function selfOverlaps(pts) {
+  const out = [], n = pts.length, seg = i => [pts[(i - 1 + n) % n], pts[i]];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const [a, b] = seg(i), [c, d] = seg(j), L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (L < 1 || Math.hypot(d[0] - c[0], d[1] - c[1]) < 1) continue;
+    const cr = q => Math.abs((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) / L;
+    if (cr(c) > 2 || cr(d) > 2) continue;
+    const t = q => ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / L;
+    const lo = Math.max(0, Math.min(t(c), t(d))), hi = Math.min(L, Math.max(t(c), t(d)));
+    if (hi - lo > 5) out.push([i, j, Math.round(hi - lo)]);
+  }
+  return out;
+}
+// 去掉 0 长度的墙（相邻两点重合），返回删了几个
+function dropZero(rid) {
+  const pts = M.walls[rid]; let n = 0;
+  for (let i = pts.length - 1; i >= 0 && pts.length > 3; i--) {
+    const a = pts[(i - 1 + pts.length) % pts.length];
+    if (Math.hypot(pts[i][0] - a[0], pts[i][1] - a[1]) < 1) { pts.splice(i, 1); n++; }
+  }
+  return n;
+}
+// 某个角点指向房间内部的单位方向（角平分线）
+function inwardDir(rid, i) {
+  const pts = M.walls[rid], n = pts.length, p = pts[i], a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n];
+  const u1 = [a[0] - p[0], a[1] - p[1]], u2 = [b[0] - p[0], b[1] - p[1]], n1 = Math.hypot(...u1), n2 = Math.hypot(...u2);
+  if (!n1 || !n2) return null;
+  let bx = u1[0] / n1 + u2[0] / n2, by = u1[1] / n1 + u2[1] / n2, bn = Math.hypot(bx, by);
+  if (bn < 1e-6) { bx = -u1[1] / n1; by = u1[0] / n1; bn = 1; }
+  bx /= bn; by /= bn;
+  if (!pip([p[0] + bx * 30, p[1] + by * 30], ptsOf(pts))) { bx = -bx; by = -by; }
+  return [bx, by];
+}
+// ---------- 墙类型的「区间」操作：开门、封门、两边同步改类型 ----------
+const wclass = T => T === "1" ? "outer" : T === "2" ? "inner" : "door";
+const CLASSNAME = {outer:"外墙", inner:"内墙", door:"门段"};
+// P1→P2 这条线在墙段 a→b 上覆盖的区间（距 a 的 mm），不共线或不重叠返回 null
+function overlapOn(a, b, P1, P2, tol = 3) {
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 1) return null;
+  const off = q => Math.abs((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) / L;
+  if (off(P1) > tol || off(P2) > tol) return null;
+  const t = q => ((q[0] - a[0]) * (b[0] - a[0]) + (q[1] - a[1]) * (b[1] - a[1])) / L;
+  const s0 = Math.max(0, Math.min(t(P1), t(P2))), e0 = Math.min(L, Math.max(t(P1), t(P2)));
+  return e0 - s0 > 1 ? [s0, e0, L] : null;
+}
+// 把房间 rid 第 j 段墙上 [s,e] 这一截改成类型 T（必要时拆段）
+function splitSeg(rid, j, s0, e0, T) {
+  const pts = M.walls[rid], n = pts.length, a = pts[(j - 1 + n) % n], b = pts[j];
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, old = b[2];
+  const at = d => [Math.round(a[0] + ux * d), Math.round(a[1] + uy * d)];
+  const head = s0 > 1, tail = e0 < L - 1;
+  if (head && tail) pts.splice(j, 0, [...at(s0), old], [...at(e0), T]);
+  else if (head) { pts.splice(j, 0, [...at(s0), old]); pts[j + 1][2] = T; }
+  else if (tail) pts.splice(j, 0, [...at(e0), T]);
+  else b[2] = T;
+}
+// 在这些房间里，凡是和 P1–P2 重合的墙，都把重合部分改成 T
+function setTypeOnInterval(rids, P1, P2, T) {
+  for (const r of rids) {
+    for (let guard = 0; guard < 60; guard++) {
+      const pts = M.walls[r]; if (!pts) break;
+      let done = true;
+      for (let j = 0; j < pts.length; j++) {
+        const a = pts[(j - 1 + pts.length) % pts.length], ov = overlapOn(a, pts[j], P1, P2);
+        if (ov && pts[j][2] !== T) { splitSeg(r, j, ov[0], ov[1], T); done = false; break; }
+      }
+      if (done) break;
+    }
+    dropZero(r);
+  }
+}
+// 把落在 P1–P2 这条线上的点交给 autoMerge，合并同类型的共线段
+function mergeOnLine(rids, P1, P2) {
+  const moved = [];
+  for (const r of rids) (M.walls[r] || []).forEach((q, i) => { if (distSeg([q[0], q[1]], P1, P2) <= 2) moved.push([r, i]); });
+  return autoMerge(moved);
+}
+// 两侧一致性：外墙另一侧贴着房间、内墙/门段另一侧没有房间、两边类型对不上
+function consistency(walls, order) {
+  const out = [], segs = [];
+  for (const r of order) (walls[r] || []).forEach((p, j, arr) => { const a = arr[(j - 1 + arr.length) % arr.length]; segs.push({r, j, a, b:p, T:p[2]}); });
+  for (const sg of segs) {
+    const L = Math.hypot(sg.b[0] - sg.a[0], sg.b[1] - sg.a[1]); if (L < 60) continue;
+    const ux = (sg.b[0] - sg.a[0]) / L, uy = (sg.b[1] - sg.a[1]) / L, me = wclass(sg.T);
+    let lone = 0, touch = {}, diff = {}, step = 25;
+    for (let d = step / 2; d < L; d += step) {
+      const q = [sg.a[0] + ux * d, sg.a[1] + uy * d];
+      const nb = segs.find(o => o.r !== sg.r && distSeg(q, o.a, o.b) <= 3);
+      if (!nb) { lone += step; continue; }
+      touch[nb.r] = (touch[nb.r] || 0) + step;
+      if (wclass(nb.T) !== me) diff[nb.r + "|" + wclass(nb.T)] = (diff[nb.r + "|" + wclass(nb.T)] || 0) + step;
+    }
+    const key = `${sg.a[0]},${sg.a[1]}|${sg.b[0]},${sg.b[1]}`;   // 只按坐标认，房间切开后原有的问题仍算「原图就有」
+    if (me === "outer") { for (const [r2, len] of Object.entries(touch)) if (len > 100) out.push({key:key + "|o" + r2, r:sg.r, j:sg.j, m:`有 ${len} mm 贴着「${M.rooms[r2]?.name || r2}」，按理应该是内墙或门段`}); }
+    else {
+      if (lone > 100) out.push({key:key + "|lone", r:sg.r, j:sg.j, m:`有 ${lone} mm 另一侧没有房间（只改了一边？），按理应该是外墙`});
+      for (const [k2, len] of Object.entries(diff)) { const [r2, cl] = k2.split("|");
+        if (len > 60 && cl !== "outer" && sg.r < r2) out.push({key:key + "|d" + k2, r:sg.r, j:sg.j, m:`和对面「${M.rooms[r2]?.name || r2}」对不上：这边是${CLASSNAME[me]}，那边有 ${len} mm 是${CLASSNAME[cl]}`}); }
+    }
+  }
+  return out;
+}
+const ORIG_CONS = new Set();   // 原图本来就有的不一致，启动时计算
+// 其它房间按离这段墙的远近排序
+function roomsByDist(rid, a, b) {
+  const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  return M.roomOrder.filter(r => r !== rid && M.walls[r]).map(r => { const q = M.walls[r];
+    return [r, Math.min(...q.map((p, i) => distSeg(m, q[(i - 1 + q.length) % q.length], p)))]; }).sort((x, y) => x[1] - y[1]).map(x => x[0]);
+}
+// 把一段墙 A→B（类型 T）插进房间 rid：找离它最近的那段墙，在中间插入 A、B 两点；返回这段墙的下标
+function insertWall(rid, A, B, T) {
+  const q = M.walls[rid], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+  let j = 0, best = Infinity;
+  q.forEach((p, i) => { const d = distSeg(m, q[(i - 1 + q.length) % q.length], p); if (d < best) { best = d; j = i; } });
+  const prev = q[(j - 1 + q.length) % q.length];
+  // 让离 prev 近的那个端点先出现，保持绕向
+  const [first, second] = Math.hypot(A[0] - prev[0], A[1] - prev[1]) <= Math.hypot(B[0] - prev[0], B[1] - prev[1]) ? [A, B] : [B, A];
+  const segT = q[j][2];
+  q.splice(j, 0, [first[0], first[1], segT], [second[0], second[1], T]);
+  dropZero(rid);
+  // 找回新墙所在下标
+  const k = q.findIndex((p, i) => p[0] === second[0] && p[1] === second[1] && q[(i - 1 + q.length) % q.length][0] === first[0] && q[(i - 1 + q.length) % q.length][1] === first[1]);
+  return k >= 0 ? k : j;
+}
+// 全屋统一编号：外墙 W#、内墙 N#、门段 M#，按房间顺序、点顺序递增（和 H5 一致）
+function wallNames(walls = M.walls, order = M.roomOrder) {
+  const m = {}, c = {W:0, N:0, M:0};
+  for (const r of order) (walls[r] || []).forEach((p, i) => { const k = p[2] === "1" ? "W" : p[2] === "2" ? "N" : "M"; m[`${r}:${i}`] = k + (c[k]++); });
+  return m;
+}
+const wallName = (r, i) => wallNames()[`${r}:${i}`] || "?";
+// 组7 的外墙列表（按编号）
+function outerList(rooms, order) {
+  const out = [];
+  for (const r of order) { const pts = rooms[r] || []; pts.forEach((p, i) => { if (p[2] === "1") { const a = pts[(i - 1 + pts.length) % pts.length]; out.push({r, i, A:[a[0], a[1]], B:[p[0], p[1]]}); } }); }
+  return out;
+}
+const G7 = grp("7");
+const OUT7 = G7 ? outerList(G7.rooms, Object.keys(G7.rooms)) : [];
+// 外墙相对建图初始位置往外推了多少（mm，负数=往里），以及是否仍平行
+function outerOffset(k, A, B) {
+  const o = OUT7[k]; if (!o) return null;
+  const dx = o.B[0] - o.A[0], dy = o.B[1] - o.A[1], L = Math.hypot(dx, dy) || 1;
+  let n = [-dy / L, dx / L];
+  const om = [(o.A[0] + o.B[0]) / 2, (o.A[1] + o.B[1]) / 2], poly = ptsOf(G7.rooms[o.r]);
+  if (pip([om[0] + n[0] * 50, om[1] + n[1] * 50], poly)) n = [-n[0], -n[1]];   // n 改成朝外
+  const cm = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+  const d = (cm[0] - om[0]) * n[0] + (cm[1] - om[1]) * n[1];
+  const cdx = B[0] - A[0], cdy = B[1] - A[1];
+  const parallel = Math.abs(cdx * dy - cdy * dx) / ((Math.hypot(cdx, cdy) || 1) * L) < 0.02;
+  return {d, parallel, room:o.r};
+}
+
+// ======================================================================
+// 校验
+// ======================================================================
+// 校验分三级：hard = 发出去大概率坏图；risk = 设备端后果未知；app = 超出 App 能力（这正是要做的事，只做标注）
+function validate() {
+  const out = [], H = m => out.push({lvl:"hard", m}), R = m => out.push({lvl:"risk", m});
+  const names = wallNames();
+  const segLen = (arr, i) => { const a = arr[(i - 1 + arr.length) % arr.length], p = arr[i]; return Math.hypot(p[0] - a[0], p[1] - a[1]); };
+  for (const rid of M.roomOrder) {
+    const cur = M.walls[rid], old = ORIG.walls[rid] || [];
+    if (!cur || JSON.stringify(cur) === JSON.stringify(old)) continue;
+    const nm = M.rooms[rid]?.name || rid, poly = ptsOf(cur);
+    if (cur.length < 3) { H(`${nm}：只剩 ${cur.length} 个点，围不成房间`); continue; }
+    for (let i = 0; i < poly.length; i++) for (let j = i + 2; j < poly.length; j++) {
+      if (i === 0 && j === poly.length - 1) continue;
+      if (segX(poly[i], poly[(i + 1) % poly.length], poly[j], poly[(j + 1) % poly.length])) { H(`${nm}：墙线自相交`); i = poly.length; break; }
+    }
+    cur.forEach((p, i) => { const len = segLen(cur, i); if (len < 1) H(`${names[rid + ":" + i]}（${nm}）：长度为 0（两个角点重合）。在右侧点「清理 0 长度的墙」或选中它删除`); });
+    selfOverlaps(cur).forEach(([i, j, L]) => H(`${nm}：${names[rid + ":" + i]} 和 ${names[rid + ":" + j]} 叠在一起（重叠 ${L} mm）。在墙上点一下可以看到这里的所有墙`));
+    for (const other of M.roomOrder) if (other !== rid && M.walls[other]) {
+      const op = ptsOf(M.walls[other]);
+      if (cur.some(p => pip([p[0], p[1]], op) && !op.some((q, k) => distSeg([p[0], p[1]], q, op[(k + 1) % op.length]) < 30))) {
+        R(`${nm}：和「${M.rooms[other]?.name || other}」重叠。两个房间叠在一起时设备怎么处理未知`); break;
+      }
+    }
+    // 固件不强制 App 的拖墙规则（只许外推、≥ 0.5 m、内墙/门段不可动、角点数不变……），这里不再提示
+  }
+  // 两侧一致性
+  if (!ORIG_CONS.size) consistency(ORIG.walls, ORIG.roomOrder).forEach(c => ORIG_CONS.add(c.key)), ORIG_CONS.add("_");
+  for (const c of consistency(M.walls, M.roomOrder)) {
+    const wn = `${names[c.r + ":" + c.j] || "?"}（${M.rooms[c.r]?.name || c.r}）`;
+    if (!ORIG_CONS.has(c.key)) R(`两侧不一致：${wn} ${c.m}`);
+  }
+  M.actions.filter(a => a.kind === "merge").forEach(a => R(`合并 ${a.ids.map(i => M.rooms[i]?.name || i).join(" + ")}：合并后的房间墙由固件重新生成，这次上传不改它的墙`));
+  return out;
+}
+
+// ======================================================================
+// 生成命令（差异 → 命令）
+// ======================================================================
+const flat = pts => "[" + pts.map(p => `${Math.round(p[0])},${Math.round(p[1])}`).join(",") + "]";
+function diffList(key, mk) {
+  const ops = [], o = ORIG[key], c = M[key];
+  const om = Object.fromEntries(o.map(x => [x.mssid, x]));
+  for (const x of c) {
+    if (x.mssid.startsWith("new")) ops.push(mk("add", x));
+    else if (JSON.stringify(x) !== JSON.stringify(om[x.mssid])) ops.push(mk("mod", x, om[x.mssid]));
+  }
+  const cm = new Set(c.map(x => x.mssid));
+  for (const x of o) if (!cm.has(x.mssid)) ops.push(mk("del", x));
+  return ops;
+}
+function buildCommands() {
+  const cmds = [];
+  const set = (label, subsets, status, note) => cmds.push({label, cmd:"setMapSet_V2", args:{mid:MID, subsets}, status, note});
+
+  // 房间属性
+  const rIds = Object.keys(M.rooms).filter(id => ORIG.rooms[id]);   // 本地切出来的新房间，机器人那边还不存在
+  for (const id of rIds) {
+    const a = M.rooms[id], b = ORIG.rooms[id];
+    if (a.name !== b.name || a.subtype !== b.subtype)
+      set(`房间改名/类型：${b.name} → ${a.name}（${SUBTYPES[+a.subtype] || a.subtype}）`, [{act:"rename", mssid:id, type:"ar", name:a.name, subtype:a.subtype}], "ok");
+    if (a.material !== b.material)
+      set(`材质：${a.name} ${b.material} → ${a.material}`, [{type:"ar", act:"mod", mssid:id, material:a.material}], "static");
+  }
+  if (rIds.some(id => M.rooms[id].dirty !== ORIG.rooms[id].dirty))
+    set("重污区（全量写）", rIds.map(id => ({type:"ar", act:"mod", mssid:id, dirty:M.rooms[id].dirty})), "static", "所有房间一起写");
+  if (rIds.some(id => M.rooms[id].seq !== ORIG.rooms[id].seq))
+    set("清扫顺序（全量写）", rIds.map(id => ({type:"ar", act:"mod", mssid:id, index:M.rooms[id].seq})), "static", "0 = 不指定");
+
+  // 区域类
+  const area = (key, name, extra) => diffList(key, (act, x) => {
+    const s = {type:key, act};
+    if (act !== "add") s.mssid = x.mssid;
+    if (act !== "del") { s.value = flat(x.pts); Object.assign(s, extra(x)); }
+    return {label:`${name} ${({add:"新增", mod:"修改", del:"删除"})[act]}${act === "add" ? "" : " #" + x.mssid}`, s};
+  }).forEach(o => set(o.label, [o.s], "static"));
+  area("vw", "虚拟墙", x => ({isCustom:x.isCustom || "1"}));
+  area("mw", "禁拖区", x => ({isCustom:x.isCustom || "1"}));
+  area("ct", "地毯", x => ({subtype:x.subtype || "1", isCustom:x.isCustom || "1"}));
+  area("ds", "门槛条", x => ({subtype:x.subtype || "1", angle:x.angle || 0, isCustom:x.isCustom || "1"}));
+  area("na", "窄区", () => ({}));
+
+  // 巡逻点
+  const pp = {add:[], mod:[], del:[]};
+  diffList("patrol", (act, x) => ({act, x})).forEach(({act, x}) => {
+    const [px, py] = x.pts[0];
+    pp[act].push(act === "add" ? {x:px, y:py} : act === "mod" ? {pid:+x.mssid, x:px, y:py} : {pid:+x.mssid});
+  });
+  for (const act of ["del", "mod", "add"]) if (pp[act].length)
+    cmds.push({label:`巡逻点 ${act}（${pp[act].length} 个）`, cmd:"setMapPoint", args:{mid:MID, act, pointValue:pp[act]}, status:"static"});
+
+  // 家具
+  diffList("furniture", (act, x) => ({act, x})).forEach(({act, x}) => {
+    const item = act === "del" ? {act, fid:+x.mssid} : {act, fid:+x.mssid, content:x.pts.map(p => p.join(",")).join(";") + ";" + x.type, info:`${x.type}_1,0,0,0,0,0`};
+    cmds.push({label:`家具 ${act} #${x.mssid}`, cmd:"setFurnitureInfo_V2", args:{mid:MID, info:[item]}, status:"static", note:"info 字段的 subtype/style/angle 按默认值填写，提交前对照原始数据核对"});
+  });
+
+  // 切割 / 分割 / 合并
+  for (const a of M.actions) {
+    if (a.kind === "cut")
+      set(`切割：${M.rooms[a.mssid]?.name || a.mssid} → 新房间「${M.rooms[a.newId]?.name || a.newId}」`, [{type:"ar", act:"divide", mssid:a.mssid, value:`${a.p1[0]},${a.p1[1]};${a.p2[0]},${a.p2[1]}`}], "ok",
+        "上传时端点会吸附到该房间的清扫边界（组 6）上；切完固件重新生成全部墙，之后再改名、写墙");
+    if (a.kind === "divide")
+      set(`分割：${M.rooms[a.mssid]?.name || a.mssid}`, [{type:"ar", act:"divide", mssid:a.mssid, value:`${a.p1[0]},${a.p1[1]};${a.p2[0]},${a.p2[1]}`}], "ok", "只画了线、没在本地切开：切出来的新房间不在设计里，名字和墙保持固件生成的样子");
+    if (a.kind === "merge")
+      set(`合并：${a.ids.map(i => M.rooms[i]?.name || i).join(" + ")}`, a.ids.map(i => ({act:"merge", mssid:i, type:"ar"})), "ok", "保留最小编号，名字取第一个房间的");
+  }
+
+  // 墙体放最后：切割/合并会重新生成全部墙
+  const wallsChanged = M.roomOrder.filter(r => JSON.stringify(M.walls[r]) !== JSON.stringify(ORIG.walls[r]));
+  if (wallsChanged.length) {
+    const info = ["1", ...M.roomOrder.map(r => r + M.walls[r].map(p => `;${Math.round(p[0])},${Math.round(p[1])},${p[2]}`).join(""))];
+    cmds.push({label:`墙体：改了 ${wallsChanged.map(r => M.rooms[r]?.name || r).join("、")}`, cmd:"setMapInfo_V2", args:{mid:MID, type:"1", info}, status:"ok",
+      note:"上传时逐间写，大的改动自动拆成小步，每步约 6 秒后回读核对"
+        + (M.actions.length ? "；有切割/合并时，墙会在它们做完之后按新的房间编号重新计算" : "")});
+  }
+  return cmds;
+}
+
+// ======================================================================
+// 渲染
+// ======================================================================
+const svg = $("#svg");
+let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+D.groups.forEach(gr => Object.values(gr.rooms).forEach(pts => pts.forEach(([x, y]) => {
+  minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+})));
+let vb = {x:minX - 600, y:minY - 600, w:maxX - minX + 1200, h:maxY - minY + 1200}, flipV = true;  // 默认上下翻转，和 App 方向一致
+function fit() {
+  const r = svg.getBoundingClientRect(), pad = 600;
+  if (!r.width || !r.height) return;
+  let w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
+  if (w / h < r.width / r.height) w = h * r.width / r.height; else h = w * r.height / r.width;
+  vb = {x:(minX + maxX) / 2 - w / 2, y:(minY + maxY) / 2 - h / 2, w, h};
+}
+const k = () => vb.w / Math.max(1, svg.getBoundingClientRect().width);
+const HUES = [12, 48, 90, 150, 190, 220, 260, 300, 335];
+const roomColor = id => `hsl(${HUES[(+id || 0) % HUES.length]} 65% 55%)`;
+const pathOf = pts => "M" + pts.map(p => p[0] + "," + p[1]).join("L") + "Z";
+const lineOf = pts => "M" + pts.map(p => p[0] + "," + p[1]).join("L");
+
+let rasterPath = null;
+function rasterD() {
+  if (rasterPath) return rasterPath;
+  const R = D.raster, p = R.pixel; let a = "", b = "";
+  R.cells.forEach(([row, col, v]) => { const x = (row - R.h / 2) * p, y = (col - R.w / 2) * p, s = `M${x},${y}h${p}v${p}h${-p}Z`; v === 1 ? a += s : b += s; });
+  return rasterPath = [a, b];
+}
+
+let sel = null;      // {kind, id}
+let here = [];       // 最近一次点击处叠在一起的全部元素
+let clickPt = null;  // 最近一次点击的地图坐标
+let drag = null;     // 进行中的拖动
+let pending = null;  // 按下但还没决定是点击还是拖动
+let preview = null;  // 绘制中的预览
+let snapMark = null; // 拖角点时吸附到的点
+const isSel = (kind, id) => sel && sel.kind === kind && sel.id === id;
+
+// 透明的粗线，专门用来接住鼠标（细线很难点中）
+function hitLine(parent, d, hit, tip, K, w = 12) {
+  const h = el("path", {d, fill:"none", stroke:"transparent", "stroke-width":w * K, "stroke-linecap":"round", "pointer-events":"stroke"}, parent);
+  h.dataset.hit = hit; if (tip) h.dataset.tip = tip;
+  return h;
+}
+
+// 当前聚焦的房间：选中房间、它的墙/角点/只读轮廓时生效
+function focusRoom() {
+  if (!sel || !$("#focus").checked) return null;
+  const [a, b] = sel.id.split(":");
+  if (sel.kind === "room") return a;
+  if (sel.kind === "w" || sel.kind === "v") return a;
+  if (sel.kind === "ro" && a !== "pos") return b;
+  return null;
+}
+function render() {
+  svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  svg.innerHTML = "";
+  const K = k();
+  const root = el("g", {transform: flipV ? `translate(0 ${minY + maxY}) scale(1 -1)` : undefined}, svg);
+  svg.style.cursor = tool === "edit" ? "default" : "crosshair";
+  const rn = r => M.rooms[r]?.name || r;
+
+  if (LS.grid) {
+    const gg = el("g", {"pointer-events":"none"}, root);
+    for (let x = Math.floor((minX - 3000) / 1000) * 1000; x <= maxX + 3000; x += 1000)
+      el("line", {x1:x, y1:minY - 3000, x2:x, y2:maxY + 3000, stroke:"var(--grid)", "stroke-width":(x % 5000 ? 1 : 2.2) * K}, gg);
+    for (let y = Math.floor((minY - 3000) / 1000) * 1000; y <= maxY + 3000; y += 1000)
+      el("line", {x1:minX - 3000, y1:y, x2:maxX + 3000, y2:y, stroke:"var(--grid)", "stroke-width":(y % 5000 ? 1 : 2.2) * K}, gg);
+  }
+  if (LS.raster) { const [a, b] = rasterD(); const gg = el("g", {opacity:.7, "pointer-events":"none"}, root); el("path", {d:a, fill:"#495057"}, gg); el("path", {d:b, fill:"#adb5bd"}, gg); }
+  // 聚焦时，其它房间的东西都画进这个变暗、不接鼠标的组
+  const foc = focusRoom(), dimG = el("g", {opacity:.15, "pointer-events":"none"}, root);
+  const P = (rid, normal) => foc && rid !== foc ? dimG : normal;
+
+  // 房间填充
+  const fillG = el("g", {}, root);
+  for (const rid of M.roomOrder) {
+    const pts = M.walls[rid]; if (!pts) continue;
+    const picked = isSel("room", rid) || mergeSel.includes(rid);
+    const f = el("path", {d:pathOf(pts), fill:roomColor(rid), "fill-opacity": LS.fill ? (picked ? .38 : .14) : (picked ? .25 : 0.001), stroke: picked ? "var(--accent)" : "none", "stroke-width":3 * K}, P(rid, fillG));
+    f.dataset.hit = `room:${rid}`; f.dataset.tip = `房间：${rn(rid)}`;
+  }
+
+  // 只读轮廓（可点击查看）
+  const outline = (gid, layer, color, w, dash) => {
+    const gr = grp(gid); if (!gr) return;
+    const gg = el("g", {}, root);
+    for (const [rid, pts] of Object.entries(gr.rooms)) {
+      const on = isSel("ro", `${layer}:${rid}`);
+      el("path", {d:pathOf(pts), fill:"none", stroke:color, "stroke-width":(on ? 4 : w) * K, "stroke-dasharray":dash ? dash.map(v => v * K).join(" ") : undefined, "pointer-events":"none"}, P(rid, gg));
+      hitLine(P(rid, gg), pathOf(pts), `ro:${layer}:${rid}`, `${LAYERS.find(l => l.key === layer).name}：${rn(rid)}（只读）`, K, 8);
+    }
+  };
+  if (LS.g6) outline("6", "g6", "var(--g6)", 2);
+  if (LS.g2) outline("2", "g2", "var(--g2)", 1.8, [7, 4]);
+  if (LS.g7) outline("7", "g7", "var(--g7)", 1.8, [2, 4]);
+  if (LS.orig) {
+    const gg = el("g", {}, root);
+    for (const rid of M.roomOrder) if (ORIG.walls[rid] && JSON.stringify(M.walls[rid]) !== JSON.stringify(ORIG.walls[rid])) {
+      el("path", {d:pathOf(ORIG.walls[rid]), fill:"none", stroke:"var(--muted)", "stroke-width":1.6 * K, "stroke-dasharray":`${6 * K} ${4 * K}`, "pointer-events":"none"}, P(rid, gg));
+      hitLine(P(rid, gg), pathOf(ORIG.walls[rid]), `ro:orig:${rid}`, `修改前的墙：${rn(rid)}（只读）`, K, 6);
+    }
+  }
+
+  // 组1 墙段 + 角点
+  if (LS.g1) {
+    const gg0 = el("g", {}, root), vg0 = el("g", {}, root);
+    for (const rid of M.roomOrder) {
+      const pts = M.walls[rid]; if (!pts) continue;
+      const gg = P(rid, gg0), vg = P(rid, vg0);
+      pts.forEach((p, i) => {
+        const a = pts[(i - 1 + pts.length) % pts.length], ed = segEditable(p[2]);
+        const on = isSel("w", `${rid}:${i}`);
+        const col = on ? "var(--accent)" : p[2] === "1" ? "var(--g1)" : p[2] === "2" ? "#868e96" : "var(--ds)";
+        el("line", {x1:a[0], y1:a[1], x2:p[0], y2:p[1], stroke:col, "stroke-width":(on ? 6 : 3) * K, "stroke-linecap":"round", "stroke-dasharray": ed ? undefined : `${4 * K} ${3 * K}`, "pointer-events":"none"}, gg);
+        hitLine(gg, `M${a[0]},${a[1]}L${p[0]},${p[1]}`, `w:${rid}:${i}`, `${wallName(rid, i)} · ${rn(rid)} · ${WTYPES[p[2]]?.name || "T=" + p[2]}\n长 ${Math.round(Math.hypot(p[0] - a[0], p[1] - a[1]))} mm`, K);
+        if (Math.hypot(p[0] - a[0], p[1] - a[1]) < 1) el("circle", {cx:p[0], cy:p[1], r:9 * K, fill:"none", stroke:"var(--warn)", "stroke-width":3 * K, "pointer-events":"none"}, gg);
+      });
+      selfOverlaps(pts).forEach(([i, j]) => [i, j].forEach(x => { const a = pts[(x - 1 + pts.length) % pts.length], b = pts[x];
+        el("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], stroke:"var(--warn)", "stroke-width":10 * K, "stroke-opacity":.35, "pointer-events":"none"}, gg); }));
+      pts.forEach((p, i) => {
+        const on = isSel("v", `${rid}:${i}`);
+        const c = el("circle", {cx:p[0], cy:p[1], r:(on ? 6 : 3.5) * K, fill: on ? "var(--accent)" : "var(--panel)", stroke: on ? "var(--accent)" : "var(--fg)", "stroke-width":1.4 * K}, vg);
+        c.dataset.hit = `v:${rid}:${i}`; c.dataset.tip = `角点 · ${rn(rid)} 第 ${i} 点\n(${p[0]}, ${p[1]})`;
+        hitLine(vg, `M${p[0]},${p[1]}h0.01`, `v:${rid}:${i}`, null, K, 14);
+      });
+    }
+  }
+
+  // 墙角角度
+  if (LS.angles && LS.g1) {
+    const gg = el("g", {"pointer-events":"none"}, root);
+    const only = foc || (sel && (sel.kind === "w" || sel.kind === "room" || sel.kind === "v") ? sel.id.split(":")[0] : null);
+    for (const rid of M.roomOrder) {
+      const pts = M.walls[rid]; if (!pts || pts.length < 3 || (only && rid !== only)) continue;
+      const poly = ptsOf(pts), ang = cornerAngles(pts);
+      pts.forEach((p, i) => {
+        if (ang[i] == null) return;
+        const deg = Math.round(ang[i] * 10) / 10;
+        if (Math.abs(deg - 180) < 0.05) return;
+        const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length];
+        const u1 = [a[0] - p[0], a[1] - p[1]], u2 = [b[0] - p[0], b[1] - p[1]];
+        const n1 = Math.hypot(...u1) || 1, n2 = Math.hypot(...u2) || 1;
+        let bx = u1[0] / n1 + u2[0] / n2, by = u1[1] / n1 + u2[1] / n2, bn = Math.hypot(bx, by);
+        if (bn < 1e-6) { bx = -u1[1] / n1; by = u1[0] / n1; bn = 1; }
+        bx /= bn; by /= bn;
+        const off = 24 * K;
+        if (!pip([p[0] + bx * off, p[1] + by * off], poly)) { bx = -bx; by = -by; }
+        const x = p[0] + bx * off, y = p[1] + by * off;
+        const odd = ![90, 270].includes(deg);
+        const t = el("text", {x, y, "font-size":(only ? 11 : 9) * K, "text-anchor":"middle", "dominant-baseline":"middle", fill: odd ? "var(--accent)" : "var(--muted)", "font-weight": odd ? 700 : 400,
+          stroke:"var(--bg)", "stroke-width":2.5 * K, "paint-order":"stroke", transform: flipV ? `translate(0 ${2 * y}) scale(1 -1)` : undefined}, gg);
+        t.textContent = `${deg}°`;
+      });
+    }
+  }
+
+  // 区域对象
+  const shapes = (key, color, line) => {
+    if (!LS[key]) return;
+    const gg = foc ? dimG : el("g", {}, root);
+    M[key].forEach(o => {
+      const on = isSel("o", `${key}:${o.mssid}`), isLine = line || o.pts.length === 2;
+      const d = isLine ? lineOf(o.pts) : pathOf(o.pts);
+      const s = el("path", {d, fill: isLine ? "none" : color, "fill-opacity":.18, stroke:color, "stroke-width":(on ? 5 : 3) * K, "stroke-linecap":"round"}, gg);
+      const tip = `${LAYERS.find(l => l.key === key).name} #${o.mssid}${o.mssid.startsWith("new") ? "（新增）" : ""}`;
+      s.dataset.hit = `o:${key}:${o.mssid}`; s.dataset.tip = tip;
+      hitLine(gg, d, `o:${key}:${o.mssid}`, tip, K);
+      if (on) o.pts.forEach((p, i) => {
+        const h = el("rect", {x:p[0] - 5 * K, y:p[1] - 5 * K, width:10 * K, height:10 * K, fill:"var(--panel)", stroke:color, "stroke-width":2 * K}, gg);
+        h.dataset.hit = `h:${key}:${o.mssid}:${i}`; h.dataset.tip = "拖动改形状";
+      });
+    });
+  };
+  shapes("ct", "var(--ct)"); shapes("na", "var(--na)"); shapes("mw", "var(--mw)"); shapes("ds", "var(--ds)"); shapes("furniture", "var(--fu)"); shapes("vw", "var(--vw)", true);
+
+  if (LS.patrol) {
+    const gg = foc ? dimG : el("g", {}, root);
+    M.patrol.forEach(o => {
+      const [x, y] = o.pts[0];
+      const c = el("circle", {cx:x, cy:y, r:(isSel("o", `patrol:${o.mssid}`) ? 9 : 6) * K, fill:"var(--pt)", stroke:"var(--panel)", "stroke-width":2 * K}, gg);
+      c.dataset.hit = `o:patrol:${o.mssid}`; c.dataset.tip = `巡逻点 #${o.mssid}\n(${x}, ${y})`;
+    });
+  }
+  if (LS.pos && D.pos?.charge && Number.isFinite(D.pos.charge.x)) {
+    const {x, y} = D.pos.charge;
+    const r = el("rect", {x:x - 120, y:y - 120, width:240, height:240, fill:"var(--r2)", rx:30, stroke: isSel("ro", "pos:charge") ? "var(--accent)" : "none", "stroke-width":4 * K}, foc ? dimG : root);
+    r.dataset.hit = "ro:pos:charge"; r.dataset.tip = "充电桩（只读）";
+  }
+  if (LS.labels) {
+    const gg0 = el("g", {}, root);
+    for (const [id, r] of Object.entries(M.rooms)) {
+      const gg = P(id, gg0);
+      const t = el("text", {x:r.cx, y:r.cy, "font-size":13 * K, "text-anchor":"middle", "dominant-baseline":"middle", fill:"var(--r2)", stroke:"var(--bg)", "stroke-width":3 * K, "paint-order":"stroke", "font-weight":600,
+        transform: flipV ? `translate(0 ${2 * r.cy}) scale(1 -1)` : undefined}, gg);
+      t.textContent = r.name + (r.seq ? ` · 第${r.seq}` : "");
+      t.dataset.hit = `room:${id}`; t.dataset.tip = `房间：${r.name}`;
+    }
+  }
+  // 分割线（可点）
+  const ag = el("g", {}, root);
+  M.actions.forEach((a, i) => {
+    if (a.kind !== "divide") return;
+    el("line", {x1:a.p1[0], y1:a.p1[1], x2:a.p2[0], y2:a.p2[1], stroke:"var(--accent)", "stroke-width":(isSel("div", String(i)) ? 5 : 3) * K, "stroke-dasharray":`${8 * K} ${5 * K}`, "pointer-events":"none"}, ag);
+    hitLine(ag, `M${a.p1[0]},${a.p1[1]}L${a.p2[0]},${a.p2[1]}`, `div:${i}`, `分割线（${rn(a.mssid)}）`, K);
+  });
+  if (snapMark) el("circle", {cx:snapMark[0], cy:snapMark[1], r:10 * K, fill:"none", stroke:"var(--accent)", "stroke-width":2.5 * K, "pointer-events":"none"}, ag);
+  if (preview) {
+    const c = `var(--${["divide", "newwall", "cut"].includes(preview.kind) ? "accent" : preview.kind})`;
+    if (["vw", "divide", "newwall", "cut"].includes(preview.kind)) el("line", {x1:preview.a[0], y1:preview.a[1], x2:preview.b[0], y2:preview.b[1], stroke:c, "stroke-width":3 * K, "stroke-dasharray":`${6 * K} ${4 * K}`, "pointer-events":"none"}, ag);
+    else el("path", {d:pathOf(rectFrom(preview.a, preview.b)), fill:c, "fill-opacity":.2, stroke:c, "stroke-width":2 * K, "pointer-events":"none"}, ag);
+    if (preview.kind === "newwall" || preview.kind === "cut") [preview.sa, preview.sb].forEach(s => s && el("circle", {cx:s.p[0], cy:s.p[1], r:7 * K, fill:"var(--accent)", "pointer-events":"none"}, ag));
+  }
+}
+
+// ======================================================================
+// 右侧：检查器
+// ======================================================================
+const objOf = id => { const [key, ...rest] = id.split(":"); const mssid = rest.join(":"); return {key, mssid, o:(M[key] || []).find(x => x.mssid === mssid)}; };
+const PRI = {h:0, v:1, w:2, o:3, div:4, ro:5, room:6, cell:7};
+function hitLabel(h) {
+  const [kind, a, b] = h.split(":"), rn = r => M.rooms[r]?.name || r;
+  if (kind === "v") return `角点 · ${rn(a)} 第 ${b} 点`;
+  if (kind === "w") { const pts = M.walls[a], p = pts?.[+b]; if (!p) return h; const q = pts[(+b - 1 + pts.length) % pts.length];
+    return `墙 ${wallName(a, +b)} · ${rn(a)} · ${WTYPES[p[2]]?.short || p[2]} · ${Math.round(Math.hypot(p[0] - q[0], p[1] - q[1]))} mm`; }
+  if (kind === "o") return `${LAYERS.find(l => l.key === a)?.name || a} #${b}`;
+  if (kind === "room") return `房间 · ${rn(a)}`;
+  if (kind === "div") return `分割线 ${+a + 1}`;
+  if (kind === "ro") return a === "pos" ? "充电桩（只读）" : `${LAYERS.find(l => l.key === a)?.name || a} · ${rn(b)}（只读）`;
+  if (kind === "cell") return `栅格格子 行 ${a} 列 ${b}（只读）`;
+  return h;
+}
+function selFromHit(h) {
+  const [kind, ...rest] = h.split(":");
+  return {kind, id:rest.join(":")};
+}
+const hitOfSel = s => s ? `${s.kind}:${s.id}` : "";
+
+function hereBlock() {
+  const list = here.filter(h => !h.startsWith("h:"));
+  if (list.length < 2) return "";
+  const cur = hitOfSel(sel);
+  return `<h2>点击处叠着 ${list.length} 个元素</h2><div class="card" style="padding:4px">${list.map(h => `<div class="hrow ${h === cur ? "cur" : ""}" data-here="${esc(h)}"><span>${esc(hitLabel(h))}</span></div>`).join("")}</div>
+    <div class="desc" style="margin:2px 0 6px">点一行切换。相邻房间共用一面墙时两边各有一段，这是正常的。选中后再按住拖，动的就是选中的那个。</div>`;
+}
+let pickedFromList = false;
+function bindHere() { document.querySelectorAll("[data-here]").forEach(r => r.onclick = () => { sel = selFromHit(r.dataset.here); pickedFromList = true; render(); renderInspector(); }); }
+
+function polyStats(pts) {
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const per = pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
+  return `<span>点数</span><span>${pts.length}</span><span>周长</span><span>${(per / 1000).toFixed(2)} m</span>
+    <span>面积</span><span>${(Math.abs(signedArea(pts)) / 1e6).toFixed(2)} ㎡</span>
+    <span>范围</span><span style="font:11px ui-monospace,Menlo,monospace">x ${Math.min(...xs)}…${Math.max(...xs)}<br>y ${Math.min(...ys)}…${Math.max(...ys)}</span>`;
+}
+const RO_DESC = {
+  g6:"激光实际能清扫到的边界（AREA_CLEAN），机器人自己生成，25 mm 精度。改墙不会改它——机器人能去哪里由它决定。",
+  g2:"App 显示用的美化轮廓（AREA_BEAUTY），机器人生成。",
+  g7:"建图时的原始房间轮廓。App 拖外墙时以它为「初始位置」。写墙不会改它。",
+  orig:"你这次修改之前的墙（组1 原样），用来对比。",
+};
+
+function renderInspector() {
+  const box = $("#inspector");
+  if (tool === "merge") {
+    box.innerHTML = `<div class="card">已选 ${mergeSel.length} 个房间：${mergeSel.map(i => esc(M.rooms[i]?.name || i)).join(" + ") || "—"}
+      <div class="row" style="margin-top:6px"><button id="doMerge" ${mergeSel.length < 2 ? "disabled" : ""}>确认合并</button><button id="clrMerge">清空</button></div></div>`;
+    $("#doMerge").onclick = () => { const n = mergeSel.map(i => M.rooms[i]?.name || i).join(" + "); M.actions.push({kind:"merge", ids:[...mergeSel]}); mergeSel = []; setTool("edit"); changed(`合并 ${n}`); };
+    $("#clrMerge").onclick = () => { mergeSel = []; render(); renderInspector(); };
+    return;
+  }
+  if (!sel) { box.innerHTML = '<span class="sub">点地图上的任何东西查看详情</span>'; return; }
+  const names = wallNames(), rn = r => M.rooms[r]?.name || r;
+
+  // ---------- 角点 ----------
+  if (sel.kind === "v") {
+    const [rid, si] = sel.id.split(":"), i = +si, pts = M.walls[rid];
+    if (!pts || !pts[i]) { sel = null; return renderInspector(); }
+    const p = pts[i], n = pts.length, prev = pts[(i - 1 + n) % n], next = pts[(i + 1) % n];
+    const ang = cornerAngles(pts)[i];
+    const wIn = `${rid}:${i}`, wOut = `${rid}:${(i + 1) % n}`;
+    const shared = M.roomOrder.flatMap(r => (M.walls[r] || []).map((q, j) => [r, j, q])).filter(([r, j, q]) => q[0] === p[0] && q[1] === p[1] && !(r === rid && j === i));
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2">
+      <span>角点</span><span><b>${esc(rn(rid))}</b> 第 ${i} 点（共 ${n} 点）</span>
+      <span>x (mm)</span><input type="number" id="vx" value="${p[0]}" step="25">
+      <span>y (mm)</span><input type="number" id="vy" value="${p[1]}" step="25">
+      <span>内角</span><span>${ang == null ? "—（旁边有 0 长度墙）" : Math.round(ang * 10) / 10 + "°"}</span>
+      <span>进来的墙</span><span class="lnk" data-sel="w:${wIn}">${names[wIn]} · ${WTYPES[p[2]]?.short || p[2]} · ${Math.round(Math.hypot(p[0] - prev[0], p[1] - prev[1]))} mm</span>
+      <span>出去的墙</span><span class="lnk" data-sel="w:${wOut}">${names[wOut]} · ${WTYPES[next[2]]?.short || next[2]} · ${Math.round(Math.hypot(next[0] - p[0], next[1] - p[1]))} mm</span>
+      <span>重合点</span><span>${shared.length ? shared.map(([r, j]) => `<span class="lnk" data-sel="v:${r}:${j}">${esc(rn(r))} 第 ${j} 点</span>`).join("、") : "无（只属于这个房间）"}</span>
+    </div>
+    <div class="row" style="margin-top:6px">
+      ${shared.length ? `<button id="vSplit">把「${esc(rn(rid))}」的点分出来</button><button id="vSplitAll">全部分开</button>` : ""}
+      <button class="danger" id="vDel">删除这个角点</button></div>
+    ${shared.length ? `<div class="desc" style="margin:4px 0 0">这里有 ${shared.length + 1} 个房间的点叠在一起，平时拖动会一起动。<br>· <b>按住 ⌥ Option 再拖</b>：只动这个房间的点，其它房间的不动。<br>· 「分出来」：把这个房间的点往它房间里面挪 50 mm，从此不再联动。<br>· 「全部分开」：每个房间的点各自往自己房间里挪 50 mm。<br>想重新合到一起，把点拖回去吸附即可。</div>` : ""}
+    <div class="desc" style="margin:4px 0 0">直接拖动角点即可移动；拖到别的角点上会吸附重合；拖到和两边连成一条直线时自动合并成一段墙。改坐标框里的数字也行。${shared.length ? "勾选了「联动」时，重合点会一起动。" : ""}</div></div>`;
+    const setXY = () => { const x = Math.round(+$("#vx").value), y = Math.round(+$("#vy").value); if (!isFinite(x) || !isFinite(y)) return;
+      const dx = x - p[0], dy = y - p[1], base = clone(M.walls); const moved = moveLinked(rid, i, dx, dy, base, false); const m = autoMerge(moved); changed(`改角点坐标（${rn(rid)} 第 ${i} 点）${m ? `，自动合并 ${m} 处` : ""}`); };
+    $("#vx").onchange = setXY; $("#vy").onchange = setXY;
+    const nudge = (r, j) => { const d = inwardDir(r, j); if (!d) return false; const q = M.walls[r][j]; q[0] = Math.round(q[0] + d[0] * 50); q[1] = Math.round(q[1] + d[1] * 50); return true; };
+    if ($("#vSplit")) $("#vSplit").onclick = () => { if (nudge(rid, i)) changed(`分离重合点（${rn(rid)} 第 ${i} 点）`); };
+    if ($("#vSplitAll")) $("#vSplitAll").onclick = () => { nudge(rid, i); shared.forEach(([r, j]) => nudge(r, j)); changed(`分开 ${shared.length + 1} 个重合点`); };
+    $("#vDel").onclick = () => { if (n <= 3) return alert("房间至少要 3 个角点"); pts.splice(i, 1); sel = null; changed(`删除角点（${rn(rid)} 第 ${i} 点）`); };
+    bindLinks(); bindHere(); return;
+  }
+
+  // ---------- 墙 ----------
+  if (sel.kind === "w") {
+    const [rid, si] = sel.id.split(":"), i = +si, pts = M.walls[rid];
+    if (!pts || !pts[i]) { sel = null; return renderInspector(); }
+    const p = pts[i], n = pts.length, a = pts[(i - 1 + n) % n];
+    const kk = outerList(M.walls, M.roomOrder).findIndex(w => w.r === rid && w.i === i);
+    const off = p[2] === "1" ? outerOffset(kk, a, p) : null;
+    const len = Math.hypot(p[0] - a[0], p[1] - a[1]);
+    const angTxt = j => { const v = cornerAngles(pts)[j]; return v == null ? "—" : `${Math.round(v * 10) / 10}°`; };
+    const opts = Object.entries(WTYPES).map(([v, t]) => `<option value="${v}" ${v === p[2] ? "selected" : ""}>${t.name}</option>`).join("")
+      + (WTYPES[p[2]] ? "" : `<option value="${esc(p[2])}" selected>${esc(p[2])}（未知）</option>`);
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2">
+      <span>墙</span><span><b>${names[sel.id]}</b> · ${esc(rn(rid))} 第 ${i} 段</span>
+      <span>类型</span><span class="row"><select id="wType">${opts}</select><label style="padding:0"><input type="checkbox" id="wSync" checked>对面房间一起改</label></span>
+      <span>长度 (mm)</span><input type="number" id="wLen" value="${Math.round(len)}" step="25">
+      <span>方向</span><span>${Math.round(segDir(a, p) * 10) / 10}°</span>
+      <span>两端夹角</span><span>起点 <span class="lnk" data-sel="v:${rid}:${(i - 1 + n) % n}">${angTxt((i - 1 + n) % n)}</span>　终点 <span class="lnk" data-sel="v:${rid}:${i}">${angTxt(i)}</span></span>
+      <span>端点</span><span style="font:11px ui-monospace,Menlo,monospace">(${a[0]},${a[1]}) → (${p[0]},${p[1]})</span>
+      ${off ? `<span>相对初始</span><span>${off.d >= 0 ? "往外" : "往里"} ${Math.abs(Math.round(off.d))} mm</span>` : ""}
+    </div>
+    ${p[2] !== "1" && len >= 300 ? `<div class="row" style="margin-top:6px">
+      ${wclass(p[2]) === "door" ? `<button id="wClose">封上这个门（两边改成内墙）</button>` : `<span>开门 宽</span><input type="number" id="dW" value="${Math.min(800, Math.floor(len / 25) * 25)}" step="50" style="width:80px"><span>mm</span><button id="wDoor">在这里开门</button>`}
+    </div>
+    <div class="desc" style="margin:4px 0 0">${wclass(p[2]) === "door" ? "门段和两侧同一直线上的内墙会合成一段。" : "门开在你刚才点的位置（点在别处则开在中间），两边房间同时加门段。"}</div>` : ""}
+    <div class="row" style="margin-top:6px">
+      <span>转给房间</span><select id="wRoom">${roomsByDist(rid, a, p).map(r => `<option value="${r}">${esc(rn(r))}</option>`).join("")}</select>
+      <button id="wMove">移过去</button><button id="wCopy">复制过去</button>
+    </div>
+    <div class="desc" style="margin:4px 0 0">移过去：这段墙从「${esc(rn(rid))}」去掉（前后两点直接连上），插进目标房间离它最近的那段墙里。复制过去：两边都保留，常用于让它成为两个房间的公共墙。</div>
+    <div class="row" style="margin-top:6px">
+      <button id="wSplit">从中间拆成两段</button>
+      <button id="wDel" class="danger">${len < 1 ? "删掉这段 0 长度墙" : "删除这段墙"}</button>
+    </div>
+    <div class="desc" style="margin:4px 0 0">${esc(WTYPES[p[2]]?.desc || "未知类型")}<br>改长度：保持起点不动，沿原方向伸缩终点。删除：两端合成一点，前后两段延长接上。双击墙也能加角点。</div></div>
+    <h2>${esc(rn(rid))} 的全部墙</h2>
+    <table class="wtab">${pts.map((q, j) => { const qa = pts[(j - 1 + n) % n];
+      return `<tr data-sel="w:${rid}:${j}" class="${j === i ? "on" : ""}"><td>${names[rid + ":" + j]}</td><td>${WTYPES[q[2]]?.short || q[2]}</td><td>${Math.round(Math.hypot(q[0] - qa[0], q[1] - qa[1]))} mm</td></tr>`; }).join("")}</table>`;
+    const give = keep => {
+      const to = $("#wRoom").value; if (!to) return;
+      if (!keep && n <= 3) return alert(`${rn(rid)} 只剩 3 段墙，不能再移走`);
+      const before = JSON.stringify(M.walls[to]);
+      const nm = names[sel.id], j = insertWall(to, [a[0], a[1]], [p[0], p[1]], p[2]);
+      if (JSON.stringify(M.walls[to]) === before) {
+        if (keep) return alert(`「${rn(to)}」在这个位置已经有一模一样的墙（两个房间本来就共用这条线），不用复制`);
+        alert(`「${rn(to)}」在这个位置本来就有这段墙，所以只会从「${rn(rid)}」里去掉`);
+      }
+      if (!keep) pts.splice(i, 1);
+      sel = {kind:"w", id:`${to}:${j}`};
+      changed(`${keep ? "复制" : "移动"}墙 ${nm}：${rn(rid)} → ${rn(to)}`);
+    };
+    $("#wMove").onclick = () => give(false); $("#wCopy").onclick = () => give(true);
+    $("#wSplit").onclick = () => { pts.splice(i, 0, [snap((a[0] + p[0]) / 2), snap((a[1] + p[1]) / 2), p[2]]); changed(`拆分 ${names[sel.id]}`); };
+    $("#wDel").onclick = () => {
+      if (n <= 3) return alert("房间至少要 3 段墙");
+      const nm = names[sel.id];
+      if (len >= 1) { const ia = (i - 1 + n) % n; pts[ia][0] = snap((a[0] + p[0]) / 2); pts[ia][1] = snap((a[1] + p[1]) / 2); }
+      pts.splice(i, 1); sel = null; changed(`删除墙 ${nm}`);
+    };
+    $("#wLen").onchange = e => { const L = +e.target.value; if (!(L > 0) || len < 1) return;
+      const ux = (p[0] - a[0]) / len, uy = (p[1] - a[1]) / len, dx = Math.round(a[0] + ux * L) - p[0], dy = Math.round(a[1] + uy * L) - p[1];
+      const moved = moveLinked(rid, i, dx, dy, clone(M.walls), false); const m = autoMerge(moved); changed(`改墙长 ${names[sel.id]} → ${L} mm${m ? `，自动合并 ${m} 处` : ""}`); };
+    $("#wType").onchange = e => {
+      const from = WTYPES[p[2]]?.name || p[2], T = e.target.value, A0 = [a[0], a[1]], B0 = [p[0], p[1]], nm = names[sel.id];
+      p[2] = T;
+      if ($("#wSync").checked) setTypeOnInterval(M.roomOrder.filter(r => r !== rid), A0, B0, T);
+      changed(`改墙类型 ${nm}：${from} → ${WTYPES[T]?.name || T}${$("#wSync").checked ? "（两边）" : ""}`);
+    };
+    if ($("#wDoor")) $("#wDoor").onclick = () => {
+      const W = Math.max(100, +$("#dW").value || 800); if (W >= len - 1) return alert(`门宽要小于这段墙的长度 ${Math.round(len)} mm`);
+      const ux = (p[0] - a[0]) / len, uy = (p[1] - a[1]) / len;
+      let c = len / 2;
+      if (clickPt && distSeg(clickPt, a, p) < 30 * k()) c = (clickPt[0] - a[0]) * ux + (clickPt[1] - a[1]) * uy;
+      c = Math.max(W / 2, Math.min(len - W / 2, c));
+      const P1 = [Math.round(a[0] + ux * (c - W / 2)), Math.round(a[1] + uy * (c - W / 2))], P2 = [Math.round(a[0] + ux * (c + W / 2)), Math.round(a[1] + uy * (c + W / 2))];
+      const nm = names[sel.id];
+      setTypeOnInterval(M.roomOrder, P1, P2, "3-1-0");
+      const j = M.walls[rid].findIndex((q, i, arr) => { const qa = arr[(i - 1 + arr.length) % arr.length]; return q[2] === "3-1-0" && distSeg([(q[0] + qa[0]) / 2, (q[1] + qa[1]) / 2], P1, P2) < 3; });
+      sel = j >= 0 ? {kind:"w", id:`${rid}:${j}`} : null;
+      changed(`在 ${nm}（${rn(rid)}）开门 ${W} mm`);
+    };
+    if ($("#wClose")) $("#wClose").onclick = () => {
+      const A0 = [a[0], a[1]], B0 = [p[0], p[1]], nm = names[sel.id];
+      setTypeOnInterval(M.roomOrder, A0, B0, "2");
+      const m = mergeOnLine(M.roomOrder, A0, B0); sel = null;
+      changed(`封门 ${nm}（${rn(rid)}）${m ? `，合并 ${m} 处` : ""}`);
+    };
+    bindLinks(); bindHere(); return;
+  }
+
+  // ---------- 房间 ----------
+  if (sel.kind === "room") {
+    const o = M.rooms[sel.id]; if (!o) { sel = null; return renderInspector(); }
+    const [mt, ang] = String(o.material).split("-");
+    const pts = M.walls[sel.id] || [];
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2">
+      <span>房间</span><span>mssid ${esc(sel.id)} · 邻接 ${esc(o.neighbors)}${o.isNew ? ' · <b style="color:var(--amber)">本地新建</b>' : ""}</span>
+      <span>名称</span><input type="text" id="fName" value="${esc(o.name)}">
+      <span>类型</span><select id="fSub">${SUBTYPES.map((nm, i) => `<option value="${i}" ${String(i) === o.subtype ? "selected" : ""}>${i} ${nm}</option>`).join("")}</select>
+      <span>材质</span><span class="row"><select id="fMat">${MATERIALS.map((nm, i) => `<option value="${i}" ${String(i) === mt ? "selected" : ""}>${nm}</option>`).join("")}</select>
+        <select id="fAng"><option value="">—</option><option value="0" ${ang === "0" ? "selected" : ""}>0°</option><option value="90" ${ang === "90" ? "selected" : ""}>90°</option></select></span>
+      <span>重污区</span><label><input type="checkbox" id="fDirty" ${o.dirty ? "checked" : ""}>标记为重污</label>
+      <span>清扫顺序</span><input type="number" id="fSeq" min="0" max="99" value="${o.seq}">
+      ${pts.length ? polyStats(ptsOf(pts)) : ""}
+    </div>${o.isNew ? '<div class="desc" style="margin:6px 0 0;color:var(--amber)">这是本地切出来的房间。上传时机器人先按切线切出它，再按位置对应上，名称和墙照常生效。</div>' : ""}<div class="desc" style="margin:6px 0 0">清扫参数 cleanset（${esc(D.rooms.find(r => r.mssid === sel.id)?.clean_config || "")}）在地图编辑里没有写命令，只读。</div></div>
+    <h2>墙（点一行选中）</h2>
+    <table class="wtab">${pts.map((q, j) => { const qa = pts[(j - 1 + pts.length) % pts.length];
+      return `<tr data-sel="w:${sel.id}:${j}"><td>${names[sel.id + ":" + j]}</td><td>${WTYPES[q[2]]?.short || q[2]}</td><td>${Math.round(Math.hypot(q[0] - qa[0], q[1] - qa[1]))} mm</td></tr>`; }).join("")}</table>`;
+    const upd = fn => e => { fn(e.target); changed(`改房间「${o.name}」的属性`); };
+    $("#fName").onchange = upd(t => o.name = t.value.trim() || o.name);
+    $("#fSub").onchange = upd(t => o.subtype = t.value);
+    const mat = () => { const m = $("#fMat").value, a = $("#fAng").value; o.material = (m === "2" || m === "4") ? `${m}-${a || "0"}` : m; };
+    $("#fMat").onchange = upd(mat); $("#fAng").onchange = upd(mat);
+    $("#fDirty").onchange = upd(t => o.dirty = t.checked ? 1 : 0);
+    $("#fSeq").onchange = upd(t => o.seq = Math.max(0, +t.value || 0));
+    bindLinks(); bindHere(); return;
+  }
+
+  // ---------- 只读层 ----------
+  if (sel.kind === "ro") {
+    const [layer, rid] = sel.id.split(":");
+    if (layer === "pos") {
+      const c = D.pos.charge;
+      box.innerHTML = hereBlock() + `<div class="card"><div class="grid2"><span>对象</span><span><b>充电桩</b>（只读）</span>
+        <span>坐标</span><span>(${c.x}, ${c.y}) mm</span><span>朝向</span><span>${c.a}°</span><span>来源</span><span>getPos_V2 chargePos</span></div>
+        <div class="desc" style="margin:6px 0 0">没有写命令，桩的位置由机器人自己识别。</div></div>`;
+      bindHere(); return;
+    }
+    const src = layer === "orig" ? ORIG.walls[rid] : grp({g6:"6", g2:"2", g7:"7"}[layer])?.rooms[rid];
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2"><span>图层</span><span><b>${esc(LAYERS.find(l => l.key === layer)?.name || layer)}</b>（只读）</span>
+      <span>房间</span><span class="lnk" data-sel="room:${rid}">${esc(rn(rid))}</span>${src ? polyStats(ptsOf(src)) : ""}</div>
+      <div class="desc" style="margin:6px 0 0">${esc(RO_DESC[layer] || "")}</div></div>`;
+    bindLinks(); bindHere(); return;
+  }
+  if (sel.kind === "cell") {
+    const [row, col, v] = sel.id.split(":").map(Number), P = D.raster.pixel;
+    const x = (row - D.raster.h / 2) * P, y = (col - D.raster.w / 2) * P;
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2"><span>对象</span><span><b>栅格格子</b>（只读）</span>
+      <span>行 / 列</span><span>${row} / ${col}</span><span>值</span><span>${v}</span><span>位置</span><span>x ${x}…${x + P}, y ${y}…${y + P} mm</span></div>
+      <div class="desc" style="margin:6px 0 0">getMapInfo ol 的建图残片，5 cm 一格。没有写栅格的命令。</div></div>`;
+    bindHere(); return;
+  }
+  if (sel.kind === "div") {
+    const a = M.actions[+sel.id]; if (!a) { sel = null; return renderInspector(); }
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2"><span>对象</span><span><b>分割线</b>（待提交）</span><span>房间</span><span>${esc(rn(a.mssid))}</span>
+      <span>端点</span><span>(${a.p1}) → (${a.p2})</span><span>长度</span><span>${Math.round(Math.hypot(a.p2[0] - a.p1[0], a.p2[1] - a.p1[1]))} mm</span></div>
+      <div class="row" style="margin-top:6px"><button class="danger" id="fDel">删除</button></div></div>`;
+    $("#fDel").onclick = delSel; bindHere(); return;
+  }
+
+  // ---------- 虚拟墙、地毯等 ----------
+  if (sel.kind === "o") {
+    const {key, mssid, o} = objOf(sel.id); if (!o) { sel = null; return renderInspector(); }
+    const name = LAYERS.find(l => l.key === key)?.name || key;
+    let extra = "";
+    if (key === "ds") extra = `<span>角度</span><input type="number" id="fAngle" value="${o.angle}"><span>来源</span><span>${DS_SUB[o.isCustom] || o.isCustom}</span>`;
+    if (key === "ct") extra = `<span>subtype</span><input type="text" id="fCtSub" value="${esc(o.subtype)}">`;
+    if (key === "furniture") extra = `<span>类型码</span><span>${o.type}${o.type === 20 ? "（地毯）" : ""}</span>`;
+    if (o.isCustom != null && key !== "ds") extra += `<span>来源</span><span>${o.isCustom === "0" ? "机器识别" : "用户画的"}</span>`;
+    box.innerHTML = hereBlock() + `<div class="card"><div class="grid2"><span>对象</span><span><b>${esc(name)}</b> #${esc(mssid)}${mssid.startsWith("new") ? "（新增）" : ""}</span>${extra}
+      ${o.pts.length >= 3 ? polyStats(o.pts) : o.pts.length === 2 ? `<span>长度</span><span>${Math.round(Math.hypot(o.pts[1][0] - o.pts[0][0], o.pts[1][1] - o.pts[0][1]))} mm</span>` : ""}
+      <span>坐标</span><span style="font:11px ui-monospace,Menlo,monospace">${o.pts.map(p => `(${p[0]},${p[1]})`).join(" ")}</span></div>
+      <div class="row" style="margin-top:6px"><button class="danger" id="fDel">删除</button></div>
+      <div class="desc" style="margin:6px 0 0">${key === "patrol" ? "直接拖动移动" : "直接拖动整体移动；拖角上的小方块改形状"}</div></div>`;
+    $("#fDel").onclick = delSel;
+    if ($("#fAngle")) $("#fAngle").onchange = e => { o.angle = +e.target.value || 0; changed(`改门槛条 #${mssid} 角度`); };
+    if ($("#fCtSub")) $("#fCtSub").onchange = e => { o.subtype = e.target.value; changed(`改地毯 #${mssid} 类型`); };
+    bindHere(); return;
+  }
+  box.innerHTML = hereBlock() || '<span class="sub">点地图上的任何东西查看详情</span>'; bindHere();
+}
+function bindLinks() { document.querySelectorAll("#inspector [data-sel]").forEach(r => r.onclick = () => { sel = selFromHit(r.dataset.sel); render(); renderInspector(); }); }
+function delSel() {
+  if (!sel) return;
+  const rn = r => M.rooms[r]?.name || r;
+  if (sel.kind === "o") { const {key, mssid} = objOf(sel.id); const lab = `删除${LAYERS.find(l => l.key === key)?.name || key} #${mssid}`; M[key] = M[key].filter(x => x.mssid !== mssid); sel = null; changed(lab); }
+  else if (sel.kind === "div") { M.actions.splice(+sel.id, 1); sel = null; changed("删除分割线"); }
+  else if (sel.kind === "v") { const [r, i] = sel.id.split(":"); if (M.walls[r].length <= 3) return; M.walls[r].splice(+i, 1); sel = null; changed(`删除角点（${rn(r)} 第 ${i} 点）`); }
+  else if (sel.kind === "w") { $("#wDel")?.click(); }
+}
+
+const STATUS = {ok:["已实测","k"], static:["未实测","s"]};
+function renderOps() {
+  const cmds = buildCommands(), warns = validate();
+  $("#opCount").textContent = cmds.length ? `（${cmds.length} 条命令）` : "";
+  const LV = {hard:["会坏图，先修", "var(--warn)"], risk:["请留意", "var(--amber)"]};
+  $("#warns").innerHTML = Object.entries(LV).map(([lv, [t, c]]) => { const xs = warns.filter(w => w.lvl === lv); return xs.length ? `<div style="color:${c};font-size:12px;font-weight:600;margin-top:6px">${t}（${xs.length}）</div>` + xs.map(w => `<div style="color:${c};font-size:12px;margin:2px 0 2px 8px">· ${esc(w.m)}</div>`).join("") : ""; }).join("");
+  $("#ops").innerHTML = cmds.length ? cmds.map((c, i) => `<div class="op ${STATUS[c.status][1]}">${i + 1}. ${esc(c.label)} <span class="tag ${c.status === "ok" ? "t-ok" : "t-static"}">${STATUS[c.status][0]}</span>
+      <br><code>${esc(c.cmd)}</code>${c.note ? `<div class="sub">${esc(c.note)}</div>` : ""}</div>`).join("")
+    + (M.actions.some(a => a.kind !== "cut") ? `<div class="row" style="margin-top:4px">${M.actions.map((a, i) => a.kind === "cut" ? "" : `<button data-act="${i}">撤掉${a.kind === "divide" ? "分割" : "合并"} ${i + 1}</button>`).join("")}</div>` : "")
+    : '<span class="sub">还没有改动</span>';
+  document.querySelectorAll("[data-act]").forEach(b => b.onclick = () => { M.actions.splice(+b.dataset.act, 1); changed("撤掉一个分割/合并"); });
+  const zeros = M.roomOrder.reduce((n, r) => n + (M.walls[r] || []).filter((p, i, arr) => { const a = arr[(i - 1 + arr.length) % arr.length]; return Math.hypot(p[0] - a[0], p[1] - a[1]) < 1; }).length, 0);
+  if (zeros) {
+    const b = document.createElement("button"); b.className = "danger"; b.textContent = `清理 0 长度的墙（${zeros} 处）`; b.style.marginTop = "6px";
+    b.onclick = () => { let n = 0; M.roomOrder.forEach(r => n += dropZero(r)); sel = null; changed(`清理 0 长度的墙 ${n} 处`); };
+    $("#warns").appendChild(b);
+  }
+}
+
+// ======================================================================
+// 交互：点哪个选哪个，拖哪个动哪个
+// ======================================================================
+const toMap = ev => {
+  const r = svg.getBoundingClientRect();
+  const x = vb.x + (ev.clientX - r.left) / r.width * vb.w;
+  let y = vb.y + (ev.clientY - r.top) / r.height * vb.h;
+  if (flipV) y = minY + maxY - y;
+  return [x, y];
+};
+let spaceDown = false;
+addEventListener("keydown", e => {
+  if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName)) return;
+  if (e.code === "Space") { spaceDown = true; e.preventDefault(); }
+  if (e.key === "Escape") { if (tool !== "edit") setTool("edit"); else { sel = null; here = []; render(); renderInspector(); } }
+  if (e.key === "Delete" || e.key === "Backspace") delSel();
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+});
+addEventListener("keyup", e => { if (e.code === "Space") spaceDown = false; });
+
+// 鼠标下叠着的所有元素，按优先级排好
+function hitsAt(e, p) {
+  const set = new Set();
+  for (const node of document.elementsFromPoint(e.clientX, e.clientY)) { const h = node.dataset && node.dataset.hit; if (h) set.add(h); }
+  if (LS.raster) {
+    const R = D.raster, P = R.pixel, row = Math.floor(p[0] / P + R.h / 2), col = Math.floor(p[1] / P + R.w / 2);
+    const c = R.cells.find(([r0, c0]) => r0 === row && c0 === col);
+    if (c) set.add(`cell:${row}:${col}:${c[2]}`);
+  }
+  return [...set].sort((a, b) => (PRI[a.split(":")[0]] ?? 9) - (PRI[b.split(":")[0]] ?? 9));
+}
+const DRAGGABLE = ["h", "v", "w", "o"];
+
+// 移动一个角点；联动时把所有房间里和它重合的点一起移动。返回动过的 [房间, 下标]
+let soloDrag = false;   // 按住 ⌥ 拖动：只动这一个房间的点，不带重合点
+function moveLinked(rid, idx, dx, dy, base, doSnap = true) {
+  const [ox, oy] = [base[rid][idx][0], base[rid][idx][1]];
+  const targets = $("#link").checked && !soloDrag
+    ? Object.entries(base).flatMap(([r, pts]) => pts.map((p, i) => [r, i, p]).filter(([, , p]) => p[0] === ox && p[1] === oy))
+    : [[rid, idx, base[rid][idx]]];
+  for (const [r, i, p] of targets) { M.walls[r][i][0] = doSnap ? snap(p[0] + dx) : Math.round(p[0] + dx); M.walls[r][i][1] = doSnap ? snap(p[1] + dy) : Math.round(p[1] + dy); }
+  return targets.map(([r, i]) => [r, i]);
+}
+// 自动合并：去掉 0 长度的墙；被移动的点若和两边连成直线、且两段同类型，就合成一段
+function autoMerge(moved) {
+  const coords = new Set(moved.map(([r, i]) => M.walls[r]?.[i] && `${M.walls[r][i][0]},${M.walls[r][i][1]}`));
+  const rooms = [...new Set(moved.map(([r]) => r))];
+  let n = 0;
+  for (const r of rooms) {
+    n += dropZero(r);
+    const pts = M.walls[r];
+    for (let i = pts.length - 1; i >= 0 && pts.length > 3; i--) {
+      if (!coords.has(`${pts[i][0]},${pts[i][1]}`)) continue;
+      const a = pts[(i - 1 + pts.length) % pts.length], b = pts[(i + 1) % pts.length];
+      const cross = (pts[i][0] - a[0]) * (b[1] - a[1]) - (pts[i][1] - a[1]) * (b[0] - a[0]);
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const between = ((pts[i][0] - a[0]) * (b[0] - a[0]) + (pts[i][1] - a[1]) * (b[1] - a[1])) / L;
+      if (Math.abs(cross) / L <= 2 && between > 0 && between < L && pts[i][2] === b[2]) { pts.splice(i, 1); n++; }
+    }
+  }
+  return n;
+}
+// 离某点最近的「房间墙上的点」
+function nearestOnRoom(rid, pt) {
+  const pts = M.walls[rid]; let best = null;
+  pts.forEach((p, i) => {
+    const a = pts[(i - 1 + pts.length) % pts.length], dx = p[0] - a[0], dy = p[1] - a[1], L2 = dx * dx + dy * dy || 1;
+    let t = Math.max(0, Math.min(1, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L2));
+    const q = [a[0] + t * dx, a[1] + t * dy], d = Math.hypot(pt[0] - q[0], pt[1] - q[1]);
+    if (!best || d < best.d) best = {rid, i, t, p:q, d};
+  });
+  // 靠近端点就直接吸到端点
+  const L = Math.hypot(pts[best.i][0] - pts[(best.i - 1 + pts.length) % pts.length][0], pts[best.i][1] - pts[(best.i - 1 + pts.length) % pts.length][1]);
+  const tol = Math.min(8 * k(), 100);   // 离角点 8 像素且 10 cm 以内才吸到角点
+  if (best.t * L < tol) { best.t = 0; const a = pts[(best.i - 1 + pts.length) % pts.length]; best.p = [a[0], a[1]]; }
+  else if ((1 - best.t) * L < tol) { best.t = 1; best.p = [pts[best.i][0], pts[best.i][1]]; }
+  else best.p = [snap(best.p[0]), snap(best.p[1])];
+  return best;
+}
+function nearestBoundary(pt) {
+  let best = null;
+  for (const r of M.roomOrder) if (M.walls[r]) { const b = nearestOnRoom(r, pt); if (!best || b.d < best.d) best = b; }
+  return best && best.d <= 15 * k() ? best : null;
+}
+// 画新墙：用一条弦替换房间边界的一侧，保留面积大的那边
+function applyNewWall(a, b) {
+  const tol = 15 * k();
+  let pick = null;
+  for (const r of M.roomOrder) {
+    if (!M.walls[r]) continue;
+    const sa = nearestOnRoom(r, a), sb = nearestOnRoom(r, b);
+    if (sa.d <= tol && sb.d <= tol && (!pick || Math.max(sa.d, sb.d) < Math.max(pick.sa.d, pick.sb.d))) pick = {r, sa, sb};
+  }
+  if (!pick) return alert("新墙的两端要都落在同一个房间的墙上（会自动吸附，离墙近一点再松手）"), null;
+  const {r, sa, sb} = pick, pts = M.walls[r], n = pts.length;
+  if (Math.hypot(sa.p[0] - sb.p[0], sa.p[1] - sb.p[1]) < 50) return null;
+  const pos = s => ((s.i - 1 + s.t) % n + n) % n;
+  const between = (pA, pB) => { const dB = (pB - pA + n) % n; return [...Array(n).keys()].map(j => ({j, d:(j - pA + n) % n})).filter(x => x.d > 1e-9 && x.d < dB - 1e-9).sort((x, y) => x.d - y.d).map(x => x.j); };
+  const pA = pos(sa), pB = pos(sb);
+  const fJ = between(pA, pB), rJ = between(pB, pA);
+  const tOf = js => js.map(j => pts[j][2]);
+  const chord = ts => ts.includes("1") ? "1" : "2";
+  const tA = pts[sa.i][2], tB = pts[sb.i][2];
+  const polyF = [[...sa.p, chord([...tOf(rJ), tA])], ...fJ.map(j => [...pts[j]]), [...sb.p, tB]];
+  const polyR = [[...sb.p, chord([...tOf(fJ), tB])], ...rJ.map(j => [...pts[j]]), [...sa.p, tA]];
+  const area = q => Math.abs(signedArea(q));
+  const chosen = area(polyF) >= area(polyR) ? polyF : polyR;
+  if (chosen.length < 3) return null;
+  M.walls[r] = chosen.map(p => [Math.round(p[0]), Math.round(p[1]), p[2]]);
+  dropZero(r);
+  return r;
+}
+
+// 切割房间：沿 a–b 把一个房间切成两个多边形，大的保留原编号，小的成为新房间
+function applyCut(a, b) {
+  const tol = 15 * k();
+  let pick = null;
+  for (const r of M.roomOrder) {
+    if (!M.walls[r]) continue;
+    const sa = nearestOnRoom(r, a), sb = nearestOnRoom(r, b);
+    if (sa.d > tol || sb.d > tol) continue;
+    const mid = [(sa.p[0] + sb.p[0]) / 2, (sa.p[1] + sb.p[1]) / 2];
+    if (!pip(mid, ptsOf(M.walls[r]))) continue;
+    if (!pick || Math.max(sa.d, sb.d) < Math.max(pick.sa.d, pick.sb.d)) pick = {r, sa, sb};
+  }
+  if (!pick) return alert("切割线的两端要落在同一个房间的墙上，而且要从房间里面穿过"), null;
+  const {r, sa, sb} = pick, pts = M.walls[r], n = pts.length;
+  if (Math.hypot(sa.p[0] - sb.p[0], sa.p[1] - sb.p[1]) < 100) return null;
+  // 切割线不能再碰到别的墙（凹形房间里斜穿出去的情况）
+  for (let i = 0; i < n; i++) { const q0 = pts[(i - 1 + n) % n], q1 = pts[i];
+    if (segX(sa.p, sb.p, q0, q1)) return alert("切割线中途穿过了房间的墙，请换个位置（切割线只能在房间内部走一段直线）"), null; }
+  const pos = s => ((s.i - 1 + s.t) % n + n) % n;
+  const between = (pA, pB) => { const dB = (pB - pA + n) % n; return [...Array(n).keys()].map(j => ({j, d:(j - pA + n) % n})).filter(x => x.d > 1e-9 && x.d < dB - 1e-9).sort((x, y) => x.d - y.d).map(x => x.j); };
+  const pA = pos(sa), pB = pos(sb), tA = pts[sa.i][2], tB = pts[sb.i][2];
+  const P = q => [Math.round(q[0]), Math.round(q[1])];
+  const half1 = [[...P(sa.p), "2"], ...between(pA, pB).map(j => [...pts[j]]), [...P(sb.p), tB]];
+  const half2 = [[...P(sb.p), "2"], ...between(pB, pA).map(j => [...pts[j]]), [...P(sa.p), tA]];
+  if (half1.length < 3 || half2.length < 3) return null;
+  const [big, small] = Math.abs(signedArea(half1)) >= Math.abs(signedArea(half2)) ? [half1, half2] : [half2, half1];
+  const newId = String(Math.max(...[...M.roomOrder, ...Object.keys(M.rooms)].map(Number).filter(isFinite)) + 1);
+  M.walls[r] = big; M.walls[newId] = small; M.roomOrder.push(newId);
+  dropZero(r); dropZero(newId);
+  const cen = q => { const xs = q.map(v => v[0]), ys = q.map(v => v[1]); let c = [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2];
+    if (!pip(c, ptsOf(q))) c = [q.reduce((s, v) => s + v[0], 0) / q.length, q.reduce((s, v) => s + v[1], 0) / q.length]; return c.map(Math.round); };
+  const o = M.rooms[r];
+  if (!pip([o.cx, o.cy], ptsOf(big))) [o.cx, o.cy] = cen(big);
+  const [cx, cy] = cen(small);
+  M.rooms[newId] = {name:"新房间", subtype:"0", material:o.material, dirty:0, seq:0, cx, cy, neighbors:r, isNew:true};
+  M.actions.push({kind:"cut", mssid:r, newId, p1:P(sa.p), p2:P(sb.p)});
+  return {from:r, to:newId};
+}
+
+svg.addEventListener("pointerdown", e => {
+  svg.setPointerCapture(e.pointerId);
+  const p = toMap(e);
+  clickPt = p;
+  if (e.button === 1 || spaceDown) { drag = {kind:"pan", sx:e.clientX, sy:e.clientY, vb:{...vb}}; return; }
+  const stack = hitsAt(e, p);
+  if (tool === "merge") { const rh = stack.find(h => h.startsWith("room:")); if (rh) { const a = rh.split(":")[1]; mergeSel.includes(a) ? mergeSel = mergeSel.filter(x => x !== a) : mergeSel.push(a); render(); renderInspector(); } return; }
+  if (tool === "patrol") { const id = "new" + newId++; M.patrol.push({mssid:id, pts:[[snap(p[0]), snap(p[1])]]}); sel = {kind:"o", id:`patrol:${id}`}; setTool("edit"); changed("加巡逻点"); return; }
+  if (["vw", "mw", "ct", "ds", "na", "divide", "newwall", "cut"].includes(tool)) {
+    let s = [snap(p[0]), snap(p[1])], sa = null;
+    if (tool === "newwall" || tool === "cut") { sa = nearestBoundary(p); if (sa) s = sa.p; }
+    preview = {kind:tool, a:s, b:s, sa}; drag = {kind:"draw"}; return;
+  }
+  pending = {sx:e.clientX, sy:e.clientY, p, stack, alt:e.altKey};
+});
+
+function startDrag(pd) {
+  soloDrag = !!pd.alt;
+  const cur = hitOfSel(sel);
+  // 默认拖最上面那个；只有在右侧列表里明确挑过的，才优先拖它
+  let h = (pickedFromList && pd.stack.find(x => x === cur && DRAGGABLE.includes(x.split(":")[0]))) || pd.stack.find(x => DRAGGABLE.includes(x.split(":")[0]));
+  if (!h) { drag = {kind:"pan", sx:pd.sx, sy:pd.sy, vb:{...vb}}; return; }
+  const [kind, a, b, c] = h.split(":");
+  const p = pd.p;
+  if (kind === "v") { sel = {kind:"v", id:`${a}:${b}`}; drag = {kind:"vertex", rid:a, i:+b, start:p, base:clone(M.walls)}; }
+  else if (kind === "w") {
+    const pts = M.walls[a], i = +b, A = pts[(i - 1 + pts.length) % pts.length], B = pts[i];
+    const L = Math.hypot(B[0] - A[0], B[1] - A[1]);
+    sel = {kind:"w", id:`${a}:${i}`};
+    if (L < 1) { drag = {kind:"pan", sx:pd.sx, sy:pd.sy, vb:{...vb}}; return; }
+    drag = {kind:"wall", rid:a, i, ia:(i - 1 + pts.length) % pts.length, n:[-(B[1] - A[1]) / L, (B[0] - A[0]) / L], start:p, base:clone(M.walls)};
+  }
+  else if (kind === "h") { drag = {kind:"handle", key:a, id:b, i:+c, start:p, base:clone(objOf(`${a}:${b}`).o.pts)}; }
+  else if (kind === "o") { sel = {kind:"o", id:`${a}:${b}`}; drag = {kind:"move", key:a, id:b, start:p, base:clone(objOf(`${a}:${b}`).o.pts)}; }
+  here = pd.stack.filter(x => !x.startsWith("h:"));
+  renderInspector();
+}
+
+svg.addEventListener("pointermove", e => {
+  const p = toMap(e);
+  $("#hud").textContent = `x ${Math.round(p[0])}   y ${Math.round(p[1])}  mm   视宽 ${(vb.w / 1000).toFixed(1)} m`;
+  const t = e.target.dataset && e.target.dataset.tip;
+  if (t && !drag) { const mr = $("main").getBoundingClientRect(); $("#tip").style.display = "block"; $("#tip").textContent = t; $("#tip").style.left = (e.clientX - mr.left + 14) + "px"; $("#tip").style.top = (e.clientY - mr.top + 14) + "px"; }
+  else $("#tip").style.display = "none";
+  if (pending && !drag && Math.hypot(e.clientX - pending.sx, e.clientY - pending.sy) > 4) { startDrag(pending); pending = null; }
+  if (!drag) return;
+  if (drag.kind === "pan") {
+    const r = svg.getBoundingClientRect();
+    vb.x = drag.vb.x - (e.clientX - drag.sx) / r.width * vb.w;
+    vb.y = drag.vb.y - (e.clientY - drag.sy) / r.height * vb.h;
+    svg.setAttribute("viewBox", `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); return;
+  }
+  if (drag.kind === "draw") {
+    let b = [snap(p[0]), snap(p[1])], sb = null;
+    if (preview.kind === "newwall" || preview.kind === "cut") { sb = nearestBoundary(p); if (sb) b = sb.p; }
+    preview.b = b; preview.sb = sb; render(); return;
+  }
+  let dx = p[0] - drag.start[0], dy = p[1] - drag.start[1];
+  if (drag.kind === "wall") {
+    const d = dx * drag.n[0] + dy * drag.n[1], mx = drag.n[0] * d, my = drag.n[1] * d;
+    M.walls = clone(drag.base);
+    drag.moved = [...moveLinked(drag.rid, drag.ia, mx, my, drag.base), ...moveLinked(drag.rid, drag.i, mx, my, drag.base)];
+  } else if (drag.kind === "vertex") {
+    // 吸附到附近的其它角点
+    const o = drag.base[drag.rid][drag.i], tx = o[0] + dx, ty = o[1] + dy, tol = 10 * k();
+    let best = null;
+    for (const [r, pts] of Object.entries(drag.base)) pts.forEach((q, j) => {
+      if (soloDrag ? (r === drag.rid && j === drag.i) : (q[0] === o[0] && q[1] === o[1])) return;   // 自己（联动时连同重合点）不算
+      const d = Math.hypot(q[0] - tx, q[1] - ty); if (d <= tol && (!best || d < best.d)) best = {d, q};
+    });
+    snapMark = best ? [best.q[0], best.q[1]] : null;
+    if (best) { dx = best.q[0] - o[0]; dy = best.q[1] - o[1]; }
+    M.walls = clone(drag.base); drag.moved = moveLinked(drag.rid, drag.i, dx, dy, drag.base, !best);
+  } else if (drag.kind === "handle") {
+    const o = objOf(`${drag.key}:${drag.id}`).o; o.pts = clone(drag.base); o.pts[drag.i] = [snap(drag.base[drag.i][0] + dx), snap(drag.base[drag.i][1] + dy)];
+  } else if (drag.kind === "move") {
+    const o = objOf(`${drag.key}:${drag.id}`).o;
+    o.pts = drag.base.map(q => [snap(q[0] + dx), snap(q[1] + dy)]);
+  }
+  render();
+});
+
+function endDrag(e) {
+  if (pending) {           // 没拖动 = 点击：选中最上面那个，并记下这里叠着的全部
+    here = pending.stack.filter(x => !x.startsWith("h:"));
+    sel = here.length ? selFromHit(here[0]) : null; pickedFromList = false;
+    pending = null; render(); renderInspector(); return;
+  }
+  if (!drag) return;
+  snapMark = null;
+  const d = drag; drag = null;
+  const wasSolo = soloDrag; soloDrag = false;
+  if (d.kind === "draw" && preview) {
+    const {kind, a, b} = preview; preview = null;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 100) { render(); return; }
+    let lab = null;
+    if (kind === "cut") { const r = applyCut(a, b); if (r) { lab = `切割房间：${M.rooms[r.from]?.name} → 新房间`; sel = {kind:"room", id:r.to}; } }
+    else if (kind === "newwall") { const r = applyNewWall(a, b); if (r) { lab = `画新墙（${M.rooms[r]?.name || r}）`; sel = {kind:"room", id:r}; } }
+    else if (kind === "divide") {
+      const mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const rid = M.roomOrder.find(r => M.walls[r] && pip(mid, ptsOf(M.walls[r])));
+      if (rid) { M.actions.push({kind:"divide", mssid:rid, p1:a, p2:b}); lab = `画分割线（${M.rooms[rid]?.name || rid}）`; } else alert("分割线中点要落在某个房间里");
+    } else {
+      const id = "new" + newId++;
+      const pts = kind === "vw" ? [a, b] : rectFrom(a, b);
+      M[kind].push(kind === "ds" ? {mssid:id, pts, subtype:"1", isCustom:"1", angle:0} : kind === "ct" ? {mssid:id, pts, subtype:"1", isCustom:"1"} : {mssid:id, pts, isCustom:"1"});
+      sel = {kind:"o", id:`${kind}:${id}`}; lab = `新增${LAYERS.find(l => l.key === kind)?.name || kind}`;
+    }
+    setTool("edit");
+    if (lab) changed(lab); else render();
+    return;
+  }
+  if (d.kind === "pan") return;
+  const rn = r => M.rooms[r]?.name || r;
+  let merged = 0;
+  if ((d.kind === "wall" || d.kind === "vertex") && d.moved) {
+    merged = autoMerge(d.moved);
+    if (sel && (sel.kind === "v" || sel.kind === "w")) { const [r, i] = sel.id.split(":"); if (!M.walls[r][+i]) sel = null; }
+  }
+  const lab = (wasSolo ? "单独" : "") + (d.kind === "wall" ? `拖墙（${rn(d.rid)}）` : d.kind === "vertex" ? `拖角点（${rn(d.rid)}）`
+    : d.kind === "handle" ? `改形状 ${d.key} #${d.id}` : `移动 ${d.key} #${d.id}`);
+  changed(lab + (merged ? `，自动合并 ${merged} 处` : ""));
+}
+svg.addEventListener("pointerup", endDrag);
+addEventListener("pointerup", e => { if (drag || pending) endDrag(e); });
+svg.addEventListener("pointercancel", () => { pending = null; if (drag) endDrag(); });
+
+// 双击墙：在双击处加一个角点
+svg.addEventListener("dblclick", e => {
+  if (tool !== "edit") return;
+  const p = toMap(e), h = hitsAt(e, p).find(x => x.startsWith("w:")); if (!h) return;
+  const [, a, b] = h.split(":"), pts = M.walls[a], i = +b, A0 = pts[(i - 1 + pts.length) % pts.length], B0 = pts[i];
+  const dx = B0[0] - A0[0], dy = B0[1] - A0[1], L2 = dx * dx + dy * dy || 1;
+  const t = Math.max(0.02, Math.min(0.98, ((p[0] - A0[0]) * dx + (p[1] - A0[1]) * dy) / L2));
+  pts.splice(i, 0, [snap(A0[0] + t * dx), snap(A0[1] + t * dy), B0[2]]);
+  sel = {kind:"v", id:`${a}:${i}`};
+  changed(`在 ${M.rooms[a]?.name || a} 的墙上加角点`);
+});
+
+svg.addEventListener("wheel", e => {
+  e.preventDefault();
+  const r = svg.getBoundingClientRect(), f = Math.exp(e.deltaY * 0.0015);
+  const mx = vb.x + (e.clientX - r.left) / r.width * vb.w, my = vb.y + (e.clientY - r.top) / r.height * vb.h;
+  vb = {x:mx - (mx - vb.x) * f, y:my - (my - vb.y) * f, w:vb.w * f, h:vb.h * f};
+  render();
+}, {passive:false});
+
+$("#undo").onclick = undo; $("#redo").onclick = redo;
+$("#reset").onclick = () => { if (confirm("回到读取到的原始地图？（这一步也会记进历史，可以再后退回来）")) { M = clone(ORIG); sel = null; changed("全部恢复为原始地图"); } };
+$("#focus").onchange = () => render();
+$("#fit").onclick = () => { fit(); render(); };
+$("#flipView").onclick = () => { flipV = !flipV; render(); };
+
+// 设计文件：上传器的输入（目标状态 + 拓扑动作），命令序列由后端按固件规则生成
+function designDoc() {
+  const isCore = c => c.cmd === "setMapInfo_V2" || (c.args.subsets || []).some(x => ["rename", "divide", "merge"].includes(x.act));
+  const rooms = Object.fromEntries(Object.entries(M.rooms).map(([id, r]) => [id, {name:r.name, subtype:String(r.subtype)}]));
+  const walls = Object.fromEntries(M.roomOrder.filter(r => M.walls[r]).map(r => [r, M.walls[r].map(p => [Math.round(p[0]), Math.round(p[1]), p[2]])]));
+  return {kind:"deebot-map-design", version:1, generated:new Date().toISOString(), mid:MID, mapName:D.meta.name,
+    base:{signature:D.base.signature, backupId:D.meta.backupId, fetchedAt:D.base.fetchedAt},
+    rooms, walls, roomOrder:M.roomOrder, actions:M.actions,
+    extra:buildCommands().filter(c => !isCore(c)).map(c => ({label:c.label, cmd:c.cmd, args:c.args, note:c.note || ""})),
+    warnings:validate().map(w => w.m)};
+}
+function exportText() { return JSON.stringify(designDoc(), null, 1); }
+const opts = () => ({max_move_mm:Math.max(25, +$("#maxMove").value || 300), include_untested:$("#untested").checked});
+const api = async (path, body) => {
+  const r = await fetch(path, {method:body === undefined ? "GET" : "POST", headers:{"Content-Type":"application/json"}, body:body === undefined ? undefined : JSON.stringify(body)});
+  const j = await r.json(); if (!r.ok) throw new Error(j.error || r.statusText); return j;
+};
+const PHASE = {backup:"备份", topology:"切割/合并", rename:"改名", extra:"未实测", walls:"写墙"};
+let lastPlan = null;
+function showPlan(p) {
+  lastPlan = p;
+  const errs = p.errors.map(e => `<div class="warn">✖ ${esc(e)}</div>`).join("");
+  const warns = p.warnings.map(e => `<div style="color:var(--amber);font-size:12px">⚠ ${esc(e)}</div>`).join("");
+  const info = p.info.map(e => `<div class="sub">· ${esc(e)}</div>`).join("");
+  const steps = p.steps.map((st, i) => `<div class="st ${st.provisional ? "prov" : ""} ${st.level === "warn" ? "warn" : ""}"><b>${i + 1}.</b> [${PHASE[st.phase] || st.phase}] ${esc(st.label)}${st.provisional ? ' <span class="tag t-static">待定</span>' : ""}
+    <div class="sub"><code>${esc(st.cmd)}</code> ${esc(shortArgs(st.args))}</div>${st.note ? `<div class="sub">${esc(st.note)}</div>` : ""}</div>`).join("");
+  const prov = p.steps.some(st => st.provisional) ? '<div class="sub" style="margin:4px 0">标「待定」的步骤要等前面的切割/合并做完、重新读取后才能算准；执行时每个阶段都会重新计算并回读核对。</div>' : "";
+  $("#plan").innerHTML = errs + warns + info + prov + steps + `<div class="sub" style="margin-top:6px">共 ${p.steps.length} 步 · 计划指纹 ${p.hash}</div>`;
+  $("#out").value = exportText();
+  const blocked = p.errors.length > 0 || p.steps.length <= 1;
+  $("#startUp").disabled = blocked;
+  $("#startUp").textContent = APP.mode === "demo" ? "开始上传（模拟设备）" : "开始上传";
+  $("#dlgTitle").textContent = p.errors.length ? "预演结果：有错误，不能上传" : "预演结果（dry-run，没有发送任何命令）";
+  $("#dlg").style.display = "flex";
+}
+function shortArgs(a) {
+  if (Array.isArray(a.info) && a.info.length > 1) return JSON.stringify({...a, info:`<组 1，共 ${a.info.length - 1} 个房间段>`});
+  const t = JSON.stringify(a); return t.length > 200 ? t.slice(0, 200) + "…" : t;
+}
+$("#dryrun").onclick = async () => {
+  if (validate().some(w => w.lvl === "hard") && !confirm("还有「会坏图」的问题没修，确定继续预演？")) return;
+  try { showPlan(await api("/api/plan", {design:designDoc(), options:opts()})); } catch (e) { alert("预演失败：" + e.message); }
+};
+$("#export").onclick = () => { $("#out").value = exportText(); download(); };
+$("#close").onclick = () => $("#dlg").style.display = "none";
+$("#copy").onclick = async () => { try { await navigator.clipboard.writeText(exportText()); $("#copy").textContent = "已复制"; } catch (e) {} setTimeout(() => $("#copy").textContent = "复制", 1200); };
+function download() {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([exportText()], {type:"application/json"}));
+  a.download = `map-design-${MID}-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "")}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+$("#dl").onclick = download;
+$("#startUp").onclick = async () => {
+  if (!lastPlan) return;
+  const n = lastPlan.steps.length;
+  const msg = APP.mode === "demo" ? `对模拟设备执行 ${n} 步？` :
+    `即将向机器人真正写入 ${n} 步（先备份）。\n\n请确认：机器人在基站上充电、App 没有打开地图编辑页。\n\n确定开始？`;
+  if (!confirm(msg)) return;
+  try { await api("/api/upload", {design:designDoc(), options:opts(), confirm:lastPlan.hash}); $("#dlg").style.display = "none"; pollJob(); }
+  catch (e) { alert("没有开始：" + e.message); }
+};
+$("#refresh").onclick = async () => {
+  if (!confirm("从机器人重新读取地图？当前没上传的编辑会保留在「历史」里，但基准会换成新读到的地图。")) return;
+  $("#refresh").disabled = true; $("#refresh").textContent = "读取中…";
+  try { await api("/api/refresh", {}); location.reload(); } catch (e) { alert(e.message); $("#refresh").disabled = false; $("#refresh").textContent = "从机器人重新读取"; }
+};
+const JOBSTATE = {idle:"", running:"上传中", waiting_online:"等待机器人上线", need_reboot:"需要重启机器人", stopped:"已停止", failed:"失败", done:"完成"};
+let jobTimer = null;
+function renderJob(st) {
+  const j = st.job, box = $("#job");
+  $("#appState").textContent = (st.mode === "demo" ? "演示模式：虚构地图 + 模拟设备，不连机器人" : "真机模式") +
+    (st.snapshot?.fetchedAt ? ` · 地图读取于 ${new Date(st.snapshot.fetchedAt * 1000).toLocaleString("zh-CN")}` : "");
+  if (j.state === "idle") { box.innerHTML = ""; return; }
+  const color = {done:"var(--ok)", failed:"var(--warn)", need_reboot:"var(--warn)", stopped:"var(--amber)"}[j.state] || "var(--accent)";
+  const btns = [];
+  if (["running"].includes(j.state)) btns.push('<button id="jobStop">在下一步前停止</button>');
+  if (j.state === "need_reboot") { if (st.mode === "demo") btns.push('<button id="jobReboot">模拟重启机器人</button>'); btns.push('<button id="jobResume">机器人已重启，继续</button>'); }
+  if (["stopped", "failed"].includes(j.state)) btns.push('<button id="jobResume">从断点继续</button>');
+  if (j.state === "done") btns.push('<button id="jobReload">刷新页面看结果</button>');
+  box.innerHTML = `<div style="color:${color};font-weight:600;font-size:13px">${JOBSTATE[j.state] || j.state}</div><div class="sub">${esc(j.message || "")}</div>
+    <div class="row" style="margin-top:4px">${btns.join("")}</div><div id="joblog">${esc(j.log.map(x => x.m).join("\n"))}</div>`;
+  const lg = $("#joblog"); lg.scrollTop = lg.scrollHeight;
+  const on = (id, f) => { const b = document.getElementById(id); if (b) b.onclick = f; };
+  on("jobStop", () => api("/api/stop", {}).then(renderJob));
+  on("jobReboot", () => api("/api/demo/reboot", {}).then(renderJob));
+  on("jobResume", () => api("/api/resume", {}).then(s => { renderJob(s); pollJob(); }).catch(e => alert(e.message)));
+  on("jobReload", () => { try { localStorage.removeItem("mapeditor-draft"); } catch (e) {} location.reload(); });
+}
+async function pollJob() {
+  clearTimeout(jobTimer);
+  try { const st = await api("/api/status"); renderJob(st); if (["running", "waiting_online"].includes(st.job.state)) jobTimer = setTimeout(pollJob, 1500); } catch (e) {}
+}
+
+// 启动
+$("#title").textContent = `地图「${D.meta.name || ""}」`;
+renderJob(APP); if (["running", "waiting_online"].includes(APP.job.state)) pollJob();
+$("#meta").textContent = `mid ${D.meta.mid} · backupId ${D.meta.backupId} · 数据时间 ${new Date(D.meta.mts * 1000).toLocaleString("zh-CN")}`;
+setTool("edit");
+addEventListener("resize", () => { fit(); render(); });
+renderHistory(); renderSaves();
+$("#saveCp").onclick = () => {
+  const name = prompt("存档点名称", `存档 ${new Date().toLocaleString("zh-CN")}`); if (!name) return;
+  const a = loadSaves(); a.unshift({name, t:Date.now(), s:JSON.stringify(M)}); if (storeSaves(a)) renderSaves();
+};
+$("#expCp").onclick = () => {
+  const blob = new Blob([JSON.stringify({kind:"mapeditor-saves", mid:MID, saves:loadSaves(), current:{name:"导出时的当前状态", t:Date.now(), s:JSON.stringify(M)}}, null, 1)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `map-saves-${MID}.json`; a.click(); URL.revokeObjectURL(a.href);
+};
+$("#impCp").onclick = () => $("#impFile").click();
+$("#impFile").onchange = async e => {
+  const f = e.target.files[0]; if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    if (j.kind !== "mapeditor-saves" || String(j.mid) !== MID) throw new Error("不是这张地图的存档文件");
+    const add = [...(j.saves || []), ...(j.current ? [j.current] : [])];
+    const a = loadSaves(), seen = new Set(a.map(x => x.t + x.name));
+    add.forEach(x => { if (!seen.has(x.t + x.name)) a.push(x); });
+    a.sort((x, y) => y.t - x.t); if (storeSaves(a)) renderSaves();
+  } catch (err) { alert("导入失败：" + err.message); }
+  e.target.value = "";
+};
+requestAnimationFrame(() => { fit(); render(); renderOps(); });
+renderOps();
+</script>
+</body>
+</html>

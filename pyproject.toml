@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deebot-map-editor"
+version = "0.1.0"
+description = "科沃斯扫地机地图查看/编辑器：本地网页编辑，按固件规则分步一键上传"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13"
+dependencies = [
+    "deebot-client>=18.7",
+    "aiohttp>=3.9",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[project.scripts]
+deebot-map = "deebot_map_editor.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+deebot_map_editor = ["web/*.html", "demo-snapshot.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
