@@ -32,7 +32,7 @@
 
 ## 安装
 
-需要 Python 3.13 及以上。
+需要 Python 3.14 及以上（依赖的 deebot-client 18 要求 3.14）。
 
 ```bash
 git clone https://github.com/Szyoo/deebot-map-editor.git

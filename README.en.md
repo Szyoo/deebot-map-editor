@@ -34,7 +34,7 @@ The user interface is currently in Chinese only.
 
 ## Install
 
-Requires Python 3.13 or newer.
+Requires Python 3.14 or newer (deebot-client 18 needs it).
 
 ```bash
 git clone https://github.com/Szyoo/deebot-map-editor.git

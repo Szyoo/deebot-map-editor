@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "科沃斯扫地机地图查看/编辑器：本地网页编辑，按固件规则分步一键上传"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = [
     # cloud.py 用到了 deebot-client 的内部接口，大版本升级前要先验证
     "deebot-client>=18.7,<19",
@@ -32,7 +32,7 @@ deebot_map_editor = ["web/*.html", "demo-snapshot.json"]
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py313"
+target-version = "py314"
 line-length = 160
 src = ["src", "tests"]
 
