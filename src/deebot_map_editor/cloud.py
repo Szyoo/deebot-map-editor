@@ -63,7 +63,7 @@ class CloudSession:
         self.bot = None
         self.device_name = ""
 
-    async def __aenter__(self) -> "CloudSession":
+    async def __aenter__(self) -> CloudSession:
         import aiohttp
         from deebot_client.api_client import ApiClient
         from deebot_client.authentication import Authenticator, create_rest_config

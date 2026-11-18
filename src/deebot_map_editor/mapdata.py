@@ -148,7 +148,7 @@ class MapState:
         return hashlib.sha1(key.encode()).hexdigest()[:12]
 
     @classmethod
-    def from_snapshot(cls, snap: dict) -> "MapState":
+    def from_snapshot(cls, snap: dict) -> MapState:
         return cls(snap["mid"], snap.get("rooms") or [], snap.get("info0") or [])
 
 

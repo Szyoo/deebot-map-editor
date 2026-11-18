@@ -109,9 +109,9 @@ def cmd_upload(args) -> None:
     try:
         asyncio.run(up.run())
     except NeedReboot as exc:
-        raise SystemExit(f"\n机器人没有回应：{exc}\n请物理重启机器人，上线后（可用 deebot-map wait-online 等待）用同一条命令继续，会从断点接着做。")
+        raise SystemExit(f"\n机器人没有回应：{exc}\n请物理重启机器人，上线后（可用 deebot-map wait-online 等待）用同一条命令继续，会从断点接着做。") from None
     except UploadStopped as exc:
-        raise SystemExit(f"\n已停止：{exc}")
+        raise SystemExit(f"\n已停止：{exc}") from None
 
 
 def cmd_wait_online(args) -> None:

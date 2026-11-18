@@ -8,8 +8,9 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from .cloud import CommandError, DeviceOffline
 from .mapdata import MapState, fetch_core
@@ -115,7 +116,9 @@ class Uploader:
         async with self.session_factory() as s:
             state = await self._read(s)
             if j.resumed:
-                self.log(f"从断点继续（已完成：备份{'、' + str(sum(1 for t in j.data['topology'] if t.get('status') == 'done')) + ' 个拓扑动作' if j.data['topology'] else ''}）")
+                done = sum(1 for t in j.data["topology"] if t.get("status") == "done")
+                parts = ["备份"] + ([f"{done} 个拓扑动作"] if j.data["topology"] else []) + (["改名"] if j.data.get("renamed") else [])
+                self.log(f"从断点继续（已完成：{'、'.join(parts)}）")
 
             # ---------- 备份 ----------
             if not j.data["backup"]:

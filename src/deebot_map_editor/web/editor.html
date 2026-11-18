@@ -112,6 +112,25 @@ svg{width:100%;height:100%;display:block;user-select:none;touch-action:none}
   <h2>视图</h2>
   <div class="row"><button id="fit">适配全图</button><button id="flipView">上下翻转</button></div>
   <div class="desc" style="margin:6px 0 0">滚轮缩放；按住空白处或房间拖动平移（画图时按住空格或中键平移）。Esc 取消，Delete 删除选中的东西，双击墙加角点。</div>
+
+  <h2>背景图（户型图）</h2>
+  <div class="row"><button id="bgPick">选择图片…</button><input type="file" id="bgFile" accept="image/*" hidden><button id="bgDel" class="danger" hidden>移除</button></div>
+  <div id="bgCtl" hidden>
+    <label style="margin-top:4px"><input type="checkbox" id="bgShow" checked>显示背景图</label>
+    <label><input type="checkbox" id="bgEdit">调整背景图（拖动平移；⌥+滚轮缩放，⇧+滚轮旋转；这时地图暂不能编辑）</label>
+    <div class="grid2" style="margin-top:4px">
+      <span>透明度</span><span class="row"><input type="range" id="bgOp" min="0" max="100" style="flex:1"><span id="bgOpV" class="sub" style="width:34px"></span></span>
+      <span>旋转 (°)</span><span class="row"><input type="number" id="bgRot" step="0.1" style="width:76px"><button data-bgrot="-90">−90°</button><button data-bgrot="90">+90°</button></span>
+      <span></span><input type="range" id="bgRotR" min="-180" max="180" step="0.1">
+      <span>比例</span><span class="row"><input type="number" id="bgScale" step="0.01" min="0.01" style="width:76px"><span class="sub">mm / 像素</span></span>
+      <span>中心</span><span class="row">x<input type="number" id="bgX" step="25" style="width:76px">y<input type="number" id="bgY" step="25" style="width:76px"></span>
+    </div>
+    <div class="row" style="margin-top:6px">
+      <button id="bgAlign" data-k="bgalign">两点对齐</button><button id="bgMeasure" data-k="bgscale">两点定比例</button>
+      <button id="bgMirH">左右镜像</button><button id="bgMirV">上下镜像</button><button id="bgFit">铺满地图</button>
+    </div>
+    <div class="desc" style="margin:6px 0 0">「两点对齐」：先在户型图上点两个参考点（比如两个墙角），再在地图上点对应的两个位置（会吸附到角点），比例、角度、位置一次对齐。<br>「两点定比例」：在户型图上点一段已知长度的两端，输入实际长度。<br>图片只存在这个浏览器里，不会上传到机器人。</div>
+  </div>
 </aside>
 
 <main>
@@ -308,6 +327,7 @@ const LAYERS = [
   {key:"pos", name:"充电桩", color:"var(--r2)", on:true, ro:true},
   {key:"labels", name:"房间名", color:"var(--r2)", on:true},
   {key:"angles", name:"墙角角度", color:"var(--accent)", on:true},
+  {key:"lengths", name:"墙长（mm）", color:"var(--accent)", on:true},
 ];
 const LS = {};
 LAYERS.forEach(l => LS[l.key] = l.on);
@@ -345,8 +365,9 @@ let mergeSel = [];
 function setTool(k) {
   tool = k; if (k !== "merge") mergeSel = [];
   preview = null;
-  document.querySelectorAll("#tools button").forEach(b => b.classList.toggle("on", b.dataset.k === k));
-  $("#hint").textContent = TOOLS.find(t => t.k === k).h + (k === "edit" ? "" : "　（Esc 或再点一次按钮退出）");
+  if (k !== "bgalign" && k !== "bgscale") bgClicks = [];
+  document.querySelectorAll("#tools button, #bgCtl button[data-k]").forEach(b => b.classList.toggle("on", b.dataset.k === k));
+  $("#hint").textContent = (TOOLS.find(t => t.k === k) || BG_TOOLS[k]).h + (k === "edit" ? "" : "　（Esc 或再点一次按钮退出）");
   render(); renderInspector();
 }
 
@@ -703,6 +724,16 @@ const roomColor = id => `hsl(${HUES[(+id || 0) % HUES.length]} 65% 55%)`;
 const pathOf = pts => "M" + pts.map(p => p[0] + "," + p[1]).join("L") + "Z";
 const lineOf = pts => "M" + pts.map(p => p[0] + "," + p[1]).join("L");
 
+// 背景图（户型图）：图片像素 q → 地图坐标 = 中心 + 旋转(rot)·镜像·(s·(q - 图片中心))
+// s 是「每像素多少 mm」；rot、镜像都在地图坐标系里定义，所以切换「上下翻转」视图时图片和地图一起翻
+let BG = null;          // {url, w, h, cx, cy, s, rot, op, mx, my, show}
+let bgClicks = [];      // 两点对齐 / 两点定比例 过程中点下的点（地图坐标）
+const BG_TOOLS = {
+  bgalign: {h:"两点对齐：先在户型图上点两个参考点，再在地图上依次点对应的两个位置（靠近角点会吸附）"},
+  bgscale: {h:"两点定比例：在户型图上点一段已知长度的两端，然后输入它的实际长度"},
+};
+const bgEditing = () => !!(BG && BG.show && $("#bgEdit").checked);
+
 let rasterPath = null;
 function rasterD() {
   if (rasterPath) return rasterPath;
@@ -750,6 +781,13 @@ function render() {
       el("line", {x1:x, y1:minY - 3000, x2:x, y2:maxY + 3000, stroke:"var(--grid)", "stroke-width":(x % 5000 ? 1 : 2.2) * K}, gg);
     for (let y = Math.floor((minY - 3000) / 1000) * 1000; y <= maxY + 3000; y += 1000)
       el("line", {x1:minX - 3000, y1:y, x2:maxX + 3000, y2:y, stroke:"var(--grid)", "stroke-width":(y % 5000 ? 1 : 2.2) * K}, gg);
+  }
+  if (BG && BG.show) {
+    const edit = bgEditing();
+    const g = el("g", {transform:`translate(${BG.cx} ${BG.cy}) rotate(${BG.rot}) scale(${BG.s * BG.mx} ${BG.s * BG.my})`, opacity:BG.op,
+      "pointer-events": edit ? "all" : "none", style: edit ? "cursor:move" : undefined}, root);
+    const im = el("image", {href:BG.url, x:-BG.w / 2, y:-BG.h / 2, width:BG.w, height:BG.h, preserveAspectRatio:"none"}, g);
+    if (edit) { im.dataset.hit = "bg"; im.dataset.tip = "背景图：拖动平移"; el("rect", {x:-BG.w / 2, y:-BG.h / 2, width:BG.w, height:BG.h, fill:"none", stroke:"var(--accent)", "stroke-width":2 * K / BG.s, "stroke-dasharray":`${6 * K / BG.s} ${4 * K / BG.s}`, "pointer-events":"none"}, g); }
   }
   if (LS.raster) { const [a, b] = rasterD(); const gg = el("g", {opacity:.7, "pointer-events":"none"}, root); el("path", {d:a, fill:"#495057"}, gg); el("path", {d:b, fill:"#adb5bd"}, gg); }
   // 聚焦时，其它房间的东西都画进这个变暗、不接鼠标的组
@@ -839,6 +877,32 @@ function render() {
     }
   }
 
+  // 墙长（mm）：标在每段墙中点、朝房间内侧；不聚焦时相邻房间共用的墙只标一次
+  if (LS.lengths && LS.g1) {
+    const gg = el("g", {"pointer-events":"none"}, root);
+    const only = foc || (sel && (sel.kind === "w" || sel.kind === "room" || sel.kind === "v") ? sel.id.split(":")[0] : null);
+    const seen = new Set();
+    for (const rid of M.roomOrder) {
+      const pts = M.walls[rid]; if (!pts || pts.length < 3 || (only && rid !== only)) continue;
+      const poly = ptsOf(pts);
+      pts.forEach((p, i) => {
+        const a = pts[(i - 1 + pts.length) % pts.length], L = Math.hypot(p[0] - a[0], p[1] - a[1]);
+        if (L < 1) return;
+        const key = [`${a[0]},${a[1]}`, `${p[0]},${p[1]}`].sort().join("|");
+        if (!only && seen.has(key)) return;
+        seen.add(key);
+        if (!only && L < 40 * K) return;   // 太短的墙在当前缩放下放不下数字
+        let nx = -(p[1] - a[1]) / L, ny = (p[0] - a[0]) / L;
+        const mx = (a[0] + p[0]) / 2, my = (a[1] + p[1]) / 2, off = 14 * K;
+        if (!pip([mx + nx * off, my + ny * off], poly)) { nx = -nx; ny = -ny; }
+        const x = mx + nx * off, y = my + ny * off;
+        const t = el("text", {x, y, "font-size":(only ? 11 : 9) * K, "text-anchor":"middle", "dominant-baseline":"middle", fill:"var(--fg)", "font-family":"ui-monospace,Menlo,monospace",
+          stroke:"var(--bg)", "stroke-width":2.5 * K, "paint-order":"stroke", transform: flipV ? `translate(0 ${2 * y}) scale(1 -1)` : undefined}, gg);
+        t.textContent = String(Math.round(L));
+      });
+    }
+  }
+
   // 区域对象
   const shapes = (key, color, line) => {
     if (!LS[key]) return;
@@ -889,6 +953,15 @@ function render() {
     hitLine(ag, `M${a.p1[0]},${a.p1[1]}L${a.p2[0]},${a.p2[1]}`, `div:${i}`, `分割线（${rn(a.mssid)}）`, K);
   });
   if (snapMark) el("circle", {cx:snapMark[0], cy:snapMark[1], r:10 * K, fill:"none", stroke:"var(--accent)", "stroke-width":2.5 * K, "pointer-events":"none"}, ag);
+  // 两点对齐 / 定比例：已点的参考点（户型图上的用橙色，地图上的用蓝色）
+  bgClicks.forEach((q, i) => {
+    const onImg = i < 2, col = onImg ? "var(--amber)" : "var(--accent)";
+    if (i % 2 === 1) { const a = bgClicks[i - 1]; el("line", {x1:a[0], y1:a[1], x2:q[0], y2:q[1], stroke:col, "stroke-width":2 * K, "stroke-dasharray":`${5 * K} ${4 * K}`, "pointer-events":"none"}, ag); }
+    el("circle", {cx:q[0], cy:q[1], r:7 * K, fill:"none", stroke:col, "stroke-width":2.5 * K, "pointer-events":"none"}, ag);
+    const t = el("text", {x:q[0] + 10 * K, y:q[1] + 10 * K, "font-size":12 * K, fill:col, "font-weight":700, stroke:"var(--bg)", "stroke-width":3 * K, "paint-order":"stroke", "pointer-events":"none",
+      transform: flipV ? `translate(0 ${2 * (q[1] + 10 * K)}) scale(1 -1)` : undefined}, ag);
+    t.textContent = onImg ? `图${i + 1}` : `地${i - 1}`;
+  });
   if (preview) {
     const c = `var(--${["divide", "newwall", "cut"].includes(preview.kind) ? "accent" : preview.kind})`;
     if (["vw", "divide", "newwall", "cut"].includes(preview.kind)) el("line", {x1:preview.a[0], y1:preview.a[1], x2:preview.b[0], y2:preview.b[1], stroke:c, "stroke-width":3 * K, "stroke-dasharray":`${6 * K} ${4 * K}`, "pointer-events":"none"}, ag);
@@ -1344,6 +1417,8 @@ svg.addEventListener("pointerdown", e => {
   const p = toMap(e);
   clickPt = p;
   if (e.button === 1 || spaceDown) { drag = {kind:"pan", sx:e.clientX, sy:e.clientY, vb:{...vb}}; return; }
+  if (tool === "bgalign" || tool === "bgscale") { bgClick(p); return; }
+  if (tool === "edit" && bgEditing()) { drag = {kind:"bg", start:p, cx:BG.cx, cy:BG.cy}; return; }
   const stack = hitsAt(e, p);
   if (tool === "merge") { const rh = stack.find(h => h.startsWith("room:")); if (rh) { const a = rh.split(":")[1]; mergeSel.includes(a) ? mergeSel = mergeSel.filter(x => x !== a) : mergeSel.push(a); render(); renderInspector(); } return; }
   if (tool === "patrol") { const id = "new" + newId++; M.patrol.push({mssid:id, pts:[[snap(p[0]), snap(p[1])]]}); sel = {kind:"o", id:`patrol:${id}`}; setTool("edit"); changed("加巡逻点"); return; }
@@ -1395,6 +1470,10 @@ svg.addEventListener("pointermove", e => {
     let b = [snap(p[0]), snap(p[1])], sb = null;
     if (preview.kind === "newwall" || preview.kind === "cut") { sb = nearestBoundary(p); if (sb) b = sb.p; }
     preview.b = b; preview.sb = sb; render(); return;
+  }
+  if (drag.kind === "bg") {
+    BG.cx = Math.round(drag.cx + p[0] - drag.start[0]); BG.cy = Math.round(drag.cy + p[1] - drag.start[1]);
+    bgSyncUI(); render(); return;
   }
   let dx = p[0] - drag.start[0], dy = p[1] - drag.start[1];
   if (drag.kind === "wall") {
@@ -1453,6 +1532,7 @@ function endDrag(e) {
     return;
   }
   if (d.kind === "pan") return;
+  if (d.kind === "bg") { bgSave(); return; }
   const rn = r => M.rooms[r]?.name || r;
   let merged = 0;
   if ((d.kind === "wall" || d.kind === "vertex") && d.moved) {
@@ -1481,6 +1561,12 @@ svg.addEventListener("dblclick", e => {
 
 svg.addEventListener("wheel", e => {
   e.preventDefault();
+  if (bgEditing() && (e.altKey || e.shiftKey)) {   // ⌥ 缩放 / ⇧ 旋转背景图，以鼠标处为中心
+    const p = toMap(e), dv = e.deltaY || e.deltaX;
+    if (e.altKey) bgScaleAt(p, Math.exp(-dv * 0.0015));
+    else bgRotateAt(p, dv * 0.02);
+    bgSyncUI(); render(); bgSave(); return;
+  }
   const r = svg.getBoundingClientRect(), f = Math.exp(e.deltaY * 0.0015);
   const mx = vb.x + (e.clientX - r.left) / r.width * vb.w, my = vb.y + (e.clientY - r.top) / r.height * vb.h;
   vb = {x:mx - (mx - vb.x) * f, y:my - (my - vb.y) * f, w:vb.w * f, h:vb.h * f};
@@ -1491,7 +1577,7 @@ $("#undo").onclick = undo; $("#redo").onclick = redo;
 $("#reset").onclick = () => { if (confirm("回到读取到的原始地图？（这一步也会记进历史，可以再后退回来）")) { M = clone(ORIG); sel = null; changed("全部恢复为原始地图"); } };
 $("#focus").onchange = () => render();
 $("#fit").onclick = () => { fit(); render(); };
-$("#flipView").onclick = () => { flipV = !flipV; render(); };
+$("#flipView").onclick = () => { flipV = !flipV; if (BG) bgSyncUI(); render(); };
 
 // 设计文件：上传器的输入（目标状态 + 拓扑动作），命令序列由后端按固件规则生成
 function designDoc() {
@@ -1586,6 +1672,140 @@ async function pollJob() {
   clearTimeout(jobTimer);
   try { const st = await api("/api/status"); renderJob(st); if (["running", "waiting_online"].includes(st.job.state)) jobTimer = setTimeout(pollJob, 1500); } catch (e) {}
 }
+
+// ======================================================================
+// 背景图（户型图）
+// 图片本体存 IndexedDB（可能有几 MB，localStorage 放不下），摆放参数存 localStorage；都按地图 mid 区分
+// ======================================================================
+const BG_KEY = "mapeditor-bg-" + MID;
+const idbOpen = () => new Promise((res, rej) => {
+  const r = indexedDB.open("mapeditor", 1);
+  r.onupgradeneeded = () => r.result.createObjectStore("bg");
+  r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+});
+async function idbDo(mode, fn) {
+  try {
+    const db = await idbOpen();
+    return await new Promise(res => {
+      const q = fn(db.transaction("bg", mode).objectStore("bg"));
+      q.onsuccess = () => res(q.result ?? null); q.onerror = () => res(null);
+    });
+  } catch (e) { return null; }
+}
+const bgParams = () => BG && {cx:BG.cx, cy:BG.cy, s:BG.s, rot:BG.rot, op:BG.op, mx:BG.mx, my:BG.my, show:BG.show};
+let bgSaveTimer = null;
+function bgSave() {
+  clearTimeout(bgSaveTimer);
+  bgSaveTimer = setTimeout(() => { try { localStorage.setItem(BG_KEY, JSON.stringify(bgParams())); } catch (e) {} }, 300);
+}
+const imgSize = url => new Promise((res, rej) => { const im = new Image(); im.onload = () => res([im.naturalWidth, im.naturalHeight]); im.onerror = () => rej(new Error("图片读不出来")); im.src = url; });
+// 把图片铺到地图范围上（保持比例），朝向和当前视图一致
+function bgFitMap() {
+  const w = maxX - minX || 1000, h = maxY - minY || 1000;
+  BG.s = Math.min(w / BG.w, h / BG.h); BG.cx = Math.round((minX + maxX) / 2); BG.cy = Math.round((minY + maxY) / 2);
+  BG.rot = 0; BG.mx = 1; BG.my = flipV ? -1 : 1;
+}
+async function bgUse(blob, params) {
+  const url = URL.createObjectURL(blob);
+  let size;
+  try { size = await imgSize(url); } catch (e) { URL.revokeObjectURL(url); throw e; }
+  if (BG) URL.revokeObjectURL(BG.url);
+  BG = {url, w:size[0], h:size[1], cx:0, cy:0, s:1, rot:0, op:0.5, mx:1, my:1, show:true};
+  if (params && params.s > 0) Object.assign(BG, params); else bgFitMap();
+  $("#bgShow").checked = BG.show;
+  bgSyncUI(); render();
+}
+// 以地图上某点为中心缩放 / 旋转（度）
+function bgScaleAt(p, f) {
+  if (!(f > 0)) return;
+  BG.s *= f; BG.cx = Math.round(p[0] + (BG.cx - p[0]) * f); BG.cy = Math.round(p[1] + (BG.cy - p[1]) * f);
+}
+function bgRotateAt(p, deg) {
+  const t = deg * Math.PI / 180, c = Math.cos(t), s = Math.sin(t), dx = BG.cx - p[0], dy = BG.cy - p[1];
+  BG.cx = Math.round(p[0] + c * dx - s * dy); BG.cy = Math.round(p[1] + s * dx + c * dy);
+  BG.rot = ((BG.rot + deg + 540) % 360) - 180;
+}
+const r2 = v => Math.round(v * 100) / 100;
+function bgSyncUI() {
+  $("#bgCtl").hidden = !BG; $("#bgDel").hidden = !BG;
+  $("#bgPick").textContent = BG ? "换一张图片…" : "选择图片…";
+  if (!BG) return;
+  const set = (id, v) => { if (document.activeElement !== $(id)) $(id).value = v; };
+  set("#bgOp", Math.round(BG.op * 100)); $("#bgOpV").textContent = Math.round(BG.op * 100) + "%";
+  set("#bgRot", r2(BG.rot)); set("#bgRotR", r2(BG.rot));
+  set("#bgScale", Math.round(BG.s * 1000) / 1000);
+  set("#bgX", BG.cx); set("#bgY", BG.cy);
+  $("#bgMirH").classList.toggle("on", BG.mx < 0);
+  $("#bgMirV").classList.toggle("on", BG.my !== (flipV ? -1 : 1));
+}
+// 离 p 最近的墙角（屏幕上 12 像素以内），用来让「地图上的参考点」吸附到角点
+function nearestCorner(p) {
+  let best = null; const tol = 12 * k();
+  for (const r of M.roomOrder) (M.walls[r] || []).forEach(q => { const d = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d <= tol && (!best || d < best.d)) best = {d, q:[q[0], q[1]]}; });
+  return best ? best.q : p;
+}
+function bgClick(p) {
+  if (!BG) return setTool("edit");
+  if (tool === "bgscale") {
+    bgClicks.push(p);
+    if (bgClicks.length < 2) { $("#hint").textContent = "两点定比例：再点这段长度的另一端"; render(); return; }
+    const [a, b] = bgClicks, d = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    render();
+    const v = d >= 1 && prompt(`这两点在图上现在相当于 ${Math.round(d)} mm。它的实际长度是多少 mm？`, String(Math.round(d)));
+    const real = parseFloat(v);
+    if (real > 0) { bgScaleAt(a, real / d); bgSave(); }
+    bgClicks = []; setTool("edit"); bgSyncUI(); return;
+  }
+  // 两点对齐：前两点在户型图上，后两点是它们在地图上的位置
+  bgClicks.push(bgClicks.length >= 2 ? nearestCorner(p) : p);
+  const steps = ["在户型图上点第 2 个参考点", "在地图上点「图1」对应的位置（靠近角点会吸附）", "在地图上点「图2」对应的位置"];
+  if (bgClicks.length < 4) { $("#hint").textContent = "两点对齐：" + steps[bgClicks.length - 1] + "　（Esc 取消）"; render(); return; }
+  const [ai, bi, am, bm] = bgClicks, vi = [bi[0] - ai[0], bi[1] - ai[1]], vm = [bm[0] - am[0], bm[1] - am[1]];
+  const li = Math.hypot(...vi), lm = Math.hypot(...vm);
+  if (li < 1 || lm < 1) { alert("两个参考点离得太近了，请重新点"); bgClicks = []; setTool("bgalign"); return; }
+  const deg = (Math.atan2(vm[1], vm[0]) - Math.atan2(vi[1], vi[0])) * 180 / Math.PI;
+  // 先绕 图1 旋转、缩放，再把 图1 平移到 地1
+  bgRotateAt(ai, deg); bgScaleAt(ai, lm / li);
+  BG.cx = Math.round(BG.cx + am[0] - ai[0]); BG.cy = Math.round(BG.cy + am[1] - ai[1]);
+  bgClicks = []; setTool("edit"); bgSyncUI(); bgSave();
+}
+
+$("#bgPick").onclick = () => $("#bgFile").click();
+$("#bgFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = "";
+  if (!f) return;
+  try { await bgUse(f, null); await idbDo("readwrite", st => st.put(f, MID)); bgSave(); }
+  catch (err) { alert("加载背景图失败：" + err.message); }
+};
+$("#bgDel").onclick = async () => {
+  if (!BG || !confirm("移除背景图？（只是从这个浏览器里删掉，原图片文件不受影响）")) return;
+  URL.revokeObjectURL(BG.url); BG = null; bgClicks = [];
+  if (tool === "bgalign" || tool === "bgscale") setTool("edit");
+  try { localStorage.removeItem(BG_KEY); } catch (e) {}
+  await idbDo("readwrite", st => st.delete(MID));
+  bgSyncUI(); render();
+};
+$("#bgShow").onchange = e => { if (BG) { BG.show = e.target.checked; bgSave(); render(); } };
+$("#bgEdit").onchange = () => { sel = null; render(); renderInspector(); };
+$("#bgOp").oninput = e => { BG.op = e.target.value / 100; $("#bgOpV").textContent = e.target.value + "%"; render(); bgSave(); };
+const bgSetRot = v => { if (!Number.isFinite(v)) return; bgRotateAt([BG.cx, BG.cy], v - BG.rot); bgSyncUI(); render(); bgSave(); };
+$("#bgRot").onchange = e => bgSetRot(parseFloat(e.target.value));
+$("#bgRotR").oninput = e => bgSetRot(parseFloat(e.target.value));
+document.querySelectorAll("[data-bgrot]").forEach(b => b.onclick = () => bgSetRot(BG.rot + parseFloat(b.dataset.bgrot)));
+$("#bgScale").onchange = e => { const v = parseFloat(e.target.value); if (v > 0) { bgScaleAt([BG.cx, BG.cy], v / BG.s); bgSyncUI(); render(); bgSave(); } };
+$("#bgX").onchange = e => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) { BG.cx = Math.round(v); render(); bgSave(); } };
+$("#bgY").onchange = e => { const v = parseFloat(e.target.value); if (Number.isFinite(v)) { BG.cy = Math.round(v); render(); bgSave(); } };
+$("#bgMirH").onclick = () => { BG.mx = -BG.mx; bgSyncUI(); render(); bgSave(); };
+$("#bgMirV").onclick = () => { BG.my = -BG.my; bgSyncUI(); render(); bgSave(); };
+$("#bgFit").onclick = () => { bgFitMap(); bgSyncUI(); render(); bgSave(); };
+["#bgAlign", "#bgMeasure"].forEach(id => $(id).onclick = () => { const k2 = $(id).dataset.k; bgClicks = []; setTool(tool === k2 ? "edit" : k2); });
+(async () => {
+  const blob = await idbDo("readonly", st => st.get(MID));
+  if (!blob) return bgSyncUI();
+  let params = null;
+  try { params = JSON.parse(localStorage.getItem(BG_KEY) || "null"); } catch (e) {}
+  try { await bgUse(blob, params); } catch (e) { bgSyncUI(); }
+})();
 
 // 启动
 $("#title").textContent = `地图「${D.meta.name || ""}」`;

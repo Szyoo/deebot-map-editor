@@ -32,7 +32,7 @@ class FakeCloud:
         self.backups = 0
 
     # 上下文协议：和 CloudSession 用法一致
-    async def __aenter__(self) -> "FakeCloud":
+    async def __aenter__(self) -> FakeCloud:
         return self
 
     async def __aexit__(self, *exc) -> None:

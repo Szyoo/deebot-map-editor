@@ -20,7 +20,6 @@ import hashlib
 import json
 import math
 from dataclasses import asdict, dataclass, field
-from typing import Any
 
 from . import geometry as G
 from .mapdata import MapState, format_seg
@@ -374,7 +373,7 @@ def build_plan(design: dict, state: MapState, opts: dict | None = None, *, topol
     d = normalize_design(design)
     plan = Plan()
     if d["mid"] != state.mid:
-        plan.errors.append(f"设计文件的地图 mid 和机器人当前地图不一致")
+        plan.errors.append("设计文件的地图 mid 和机器人当前地图不一致")
         return plan
     try:
         state.index_map()
@@ -516,7 +515,7 @@ def build_plan(design: dict, state: MapState, opts: dict | None = None, *, topol
     # ---------------- 写墙 ----------------
     if provisional:
         # 切割/合并后固件会重新生成全部组 1，具体墙点要执行时才知道
-        for rid, m in sorted(mapping.items(), key=lambda kv: kv[1]):
+        for rid, _m in sorted(mapping.items(), key=lambda kv: kv[1]):
             if rid in merge_all:
                 continue
             plan.steps.append(Step(

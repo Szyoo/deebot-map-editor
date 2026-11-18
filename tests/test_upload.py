@@ -2,8 +2,8 @@ import asyncio
 import json
 
 import pytest
-from conftest import make_design, nosleep
 
+from conftest import make_design, nosleep
 from deebot_map_editor.fake import FakeCloud
 from deebot_map_editor.upload import NeedReboot, Uploader, UploadStopped
 

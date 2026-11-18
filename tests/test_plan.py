@@ -1,5 +1,4 @@
 from conftest import make_design
-
 from deebot_map_editor import geometry as G
 from deebot_map_editor.mapdata import MapState, editor_data
 from deebot_map_editor.plan import build_plan, check_divide, wall_steps
@@ -64,7 +63,7 @@ def test_wall_steps_split_large_move():
     assert len(steps) == 4  # 1000 mm / 300 → 4 步
     prev = cur
     for _, pts in steps:
-        assert max(G.dist(p, q) for p, q in zip(pts, prev)) <= 300
+        assert max(G.dist(p, q) for p, q in zip(pts, prev, strict=False)) <= 300
         prev = pts
 
 
