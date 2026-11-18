@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import pytest
 from conftest import make_design, nosleep
@@ -42,6 +43,9 @@ def test_full_flow_cut_rename_walls(snap, tmp_path):
     first_wall = cmds.index("setMapInfo_V2")
     assert all(c == "setMapInfo_V2" for c in cmds[first_wall:])
     assert fake.backups == 1
+    j = json.loads((tmp_path / "j.json").read_text())
+    assert j["backup"] and j["renamed"] and j["finished"]
+    assert all(t["status"] == "done" for t in j["topology"])
 
 
 def test_offline_after_divide_then_resume(snap, tmp_path):

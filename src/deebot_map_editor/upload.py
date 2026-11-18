@@ -171,6 +171,10 @@ class Uploader:
                 if bad:
                     raise UploadStopped(f"改名后回读不一致：房间 {bad}")
                 self.log(f"   ✓ {len(renames)} 个房间改名已核对")
+            # 改名步骤按设备当前名字现算，续传时不会重发；这里只记录进度
+            if not j.data.get("renamed"):
+                j.data["renamed"] = True
+                j.save()
 
             # ---------- 其它命令（未实测，默认不发） ----------
             extras = [st for st in plan.steps if st.phase == "extra"]
